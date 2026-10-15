@@ -1,6 +1,3 @@
-import { mkdir, writeFile } from 'node:fs/promises';
-import path from 'node:path';
-
 import { error, json, type RequestHandler } from '@sveltejs/kit';
 
 import { analyzeAreNotification } from '$lib/server/areAnalysis';
@@ -13,7 +10,13 @@ import {
 	pushDataToRemote,
 	syncHeaders
 } from '$lib/server/remoteSync';
-import { createId, documentDir, mutateData, readData, saveData } from '$lib/server/storage';
+import {
+	createId,
+	mutateData,
+	readData,
+	saveData,
+	writeStoredFile
+} from '$lib/server/storage';
 import type { IntermittencePeriod } from '$lib/types';
 
 function sanitizeFileName(name: string) {
@@ -92,8 +95,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 	const safeName = sanitizeFileName(file.name || 'notification-are');
 	const storedName = `${periodId}-${safeName || 'notification-are'}`;
 
-	await mkdir(documentDir, { recursive: true });
-	await writeFile(path.join(documentDir, storedName), buffer);
+	await writeStoredFile(storedName, buffer);
 
 	const extractedText = await extractTextFromFile(file, buffer);
 	const period = analyzeAreNotification(extractedText, {

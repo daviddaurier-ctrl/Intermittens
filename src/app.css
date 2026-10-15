@@ -1857,3 +1857,19 @@ pre {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 }
+
+/* ---- Liaison Google Drive ---- */
+
+.setup-card code {
+	border-radius: 4px;
+	background: rgba(255, 255, 255, 0.08);
+	padding: 1px 5px;
+	word-break: break-all;
+}
+
+.token-box {
+	width: 100%;
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 12px;
+	word-break: break-all;
+}

@@ -3,6 +3,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { defaultCompanyColor, normalizeCompanyColor } from '$lib/companyColors';
+import {
+	driveEnabled,
+	driveListFiles,
+	driveReadFile,
+	driveTrashFile,
+	driveWriteFile,
+	storageRequiresDrive
+} from '$lib/server/googleDrive';
 import type {
 	AppData,
 	AuthorWork,
@@ -23,7 +31,8 @@ import type {
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 export const dataDir = path.join(root, 'data');
 export const documentDir = path.join(dataDir, 'documents');
-const dataFile = path.join(dataDir, 'intermittens.json');
+const dataFileName = 'intermittens.json';
+const dataFile = path.join(dataDir, dataFileName);
 const documentDirResolved = path.resolve(documentDir);
 
 const now = () => new Date().toISOString();
@@ -113,6 +122,44 @@ export function createDefaultData(): AppData {
 			remoteLastSyncStatus: 'Synchronisation distante non activée'
 		}
 	};
+}
+
+/** Google Drive when configured; otherwise the local `data/` folder (original behaviour). */
+function useDrive() {
+	if (driveEnabled()) return true;
+	if (storageRequiresDrive()) {
+		throw new Error(
+			"Stockage non configuré : sur Vercel, reliez d'abord Google Drive via la page /setup-google."
+		);
+	}
+	return false;
+}
+
+function mimeTypeFor(storedName: string) {
+	const extension = path.extname(storedName).toLowerCase();
+	if (extension === '.pdf') return 'application/pdf';
+	if (extension === '.png') return 'image/png';
+	if (extension === '.jpg' || extension === '.jpeg') return 'image/jpeg';
+	if (extension === '.txt') return 'text/plain';
+	return 'application/octet-stream';
+}
+
+export async function writeStoredFile(storedName: string, content: Buffer | Uint8Array) {
+	if (useDrive()) {
+		await driveWriteFile('documents', storedName, content, mimeTypeFor(storedName));
+		return;
+	}
+	await mkdir(documentDir, { recursive: true });
+	await writeFile(resolveStoredDocumentPath(storedName), content);
+}
+
+export async function readStoredFile(storedName: string) {
+	if (useDrive()) {
+		const file = await driveReadFile('documents', storedName);
+		if (!file) throw new Error(`Fichier introuvable sur Google Drive : ${storedName}`);
+		return file;
+	}
+	return readFile(resolveStoredDocumentPath(storedName));
 }
 
 async function ensureDataFiles() {
@@ -378,6 +425,15 @@ export function normalizeData(input: Partial<AppData>): AppData {
 }
 
 async function writeJson(data: AppData) {
+	if (useDrive()) {
+		await driveWriteFile(
+			'root',
+			dataFileName,
+			`${JSON.stringify(data, null, 2)}\n`,
+			'application/json'
+		);
+		return;
+	}
 	await mkdir(dataDir, { recursive: true });
 	const tmpFile = `${dataFile}.tmp`;
 	await writeFile(tmpFile, `${JSON.stringify(data, null, 2)}\n`, 'utf-8');
@@ -385,6 +441,15 @@ async function writeJson(data: AppData) {
 }
 
 export async function readData(): Promise<AppData> {
+	if (useDrive()) {
+		const raw = await driveReadFile('root', dataFileName);
+		if (!raw) {
+			const initial = createDefaultData();
+			await writeJson(initial);
+			return initial;
+		}
+		return normalizeData(JSON.parse(raw.toString('utf-8')) as AppData);
+	}
 	await ensureDataFiles();
 	const raw = await readFile(dataFile, 'utf-8');
 	return normalizeData(JSON.parse(raw) as AppData);
@@ -414,6 +479,10 @@ export async function deleteStoredFiles(storedNames: string[]) {
 	const deletedFiles: string[] = [];
 
 	for (const storedName of [...new Set(storedNames.filter(Boolean))]) {
+		if (useDrive()) {
+			if (await driveTrashFile('documents', storedName)) deletedFiles.push(storedName);
+			continue;
+		}
 		try {
 			await unlink(resolveStoredDocumentPath(storedName));
 			deletedFiles.push(storedName);
@@ -435,9 +504,14 @@ export function usedStoredFiles(data: AppData) {
 }
 
 export async function cleanupUnusedDocumentFiles(data: AppData) {
-	await mkdir(documentDir, { recursive: true });
 	const used = usedStoredFiles(data ?? (await readData()));
-	const files = await readdir(documentDir);
+	let files: string[];
+	if (useDrive()) {
+		files = await driveListFiles('documents');
+	} else {
+		await mkdir(documentDir, { recursive: true });
+		files = await readdir(documentDir);
+	}
 	const unused = files.filter((file) => !used.has(file));
 	const deletedFiles = await deleteStoredFiles(unused);
 

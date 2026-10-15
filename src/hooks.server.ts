@@ -2,7 +2,7 @@ import { base } from '$app/paths';
 import { hasValidAccessCookie } from '$lib/server/access';
 import { json, redirect, type Handle } from '@sveltejs/kit';
 
-const PUBLIC_ROUTES = new Set(['/login', '/logout']);
+const PUBLIC_ROUTES = new Set(['/login', '/logout', '/setup-google/callback']);
 
 function applySecurityHeaders(response: Response) {
 	response.headers.set('cache-control', 'private, no-store');

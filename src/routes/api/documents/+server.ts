@@ -1,6 +1,3 @@
-﻿import { mkdir, writeFile } from 'node:fs/promises';
-import path from 'node:path';
-
 import { error, json, type RequestHandler } from '@sveltejs/kit';
 
 import { normalizeCompanyColor } from '$lib/companyColors';
@@ -32,7 +29,13 @@ import {
 	pushDataToRemote,
 	syncHeaders
 } from '$lib/server/remoteSync';
-import { createId, documentDir, mutateData, readData, saveData } from '$lib/server/storage';
+import {
+	createId,
+	mutateData,
+	readData,
+	saveData,
+	writeStoredFile
+} from '$lib/server/storage';
 import type {
 	AppData,
 	Company,
@@ -481,7 +484,6 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 	);
 	if (remotePayload) return json(remotePayload);
 
-	await mkdir(documentDir, { recursive: true });
 	const parts = await splitAndClassifyDocument(file.name, file.type, buffer, kind);
 	const preparedDocuments: ContractDocument[] = [];
 	const preparedPeriods: IntermittencePeriod[] = [];
@@ -493,7 +495,7 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 		const id = createId(part.kind === 'Notification ARE' ? 'period' : 'document');
 		const partSafeName = sanitizeFileName(part.fileName || safeName || 'document.pdf');
 		const storedName = `${id}-${partSafeName || 'document.pdf'}`;
-		await writeFile(path.join(documentDir, storedName), part.buffer);
+		await writeStoredFile(storedName, part.buffer);
 
 		if (part.kind === 'Notification ARE') {
 			const period = analyzeAreNotification(part.text, {

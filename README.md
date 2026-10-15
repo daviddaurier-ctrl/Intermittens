@@ -163,3 +163,27 @@ regle `.htaccess` de proxy vers ce port. Les valeurs reelles restent dans `.env.
 Le mode SSH (`DEPLOY_TRANSPORT=ssh`) cree une release distante avec un lien `current`,
 un dossier persistant `shared/data`, puis peut lancer `DEPLOY_INSTALL_COMMAND` et
 `DEPLOY_RESTART_COMMAND`.
+
+## Hébergement sur Vercel + Google Drive
+
+Sur Vercel, il n'y a pas de disque persistant : les données (`intermittens.json`) et les
+documents sont rangés dans un dossier `InterMittens` du Google Drive du propriétaire.
+L'appli n'a accès qu'aux fichiers qu'elle a créés (scope `drive.file`). Les fichiers supprimés
+depuis l'appli vont dans la corbeille Drive.
+
+Variables d'environnement Vercel :
+
+```
+ACCESS_PASSWORD=...          # obligatoire sur Vercel
+GOOGLE_CLIENT_ID=...         # client OAuth "Application Web" (Google Cloud)
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_REFRESH_TOKEN=...     # obtenu via la page /setup-google
+GOOGLE_DRIVE_FOLDER_NAME=    # optionnel, "InterMittens" par défaut
+```
+
+URI de redirection OAuth à déclarer : `https://<votre-projet>.vercel.app/setup-google/callback`.
+Publier l'écran de consentement en "Production" (sinon Google expire la clé au bout de 7 jours).
+
+Limites Vercel : 4,5 Mo maximum par fichier envoyé, 5 minutes maximum par traitement.
+
+Sans variables Google et hors Vercel, l'appli garde le stockage local d'origine dans `data/`.

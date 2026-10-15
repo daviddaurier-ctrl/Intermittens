@@ -1,9 +1,6 @@
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
-
 import { error, type RequestHandler } from '@sveltejs/kit';
 
-import { documentDir, readData } from '$lib/server/storage';
+import { readData, readStoredFile } from '$lib/server/storage';
 
 export const GET: RequestHandler = async ({ params }) => {
 	const data = await readData();
@@ -11,7 +8,7 @@ export const GET: RequestHandler = async ({ params }) => {
 
 	if (!period || !period.sourceStoredName) error(404, 'Document introuvable.');
 
-	const file = await readFile(path.join(documentDir, period.sourceStoredName));
+	const file = new Uint8Array(await readStoredFile(period.sourceStoredName));
 
 	return new Response(file, {
 		headers: {

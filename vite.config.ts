@@ -1,4 +1,4 @@
-import adapter from '@sveltejs/adapter-node';
+import nodeAdapter from '@sveltejs/adapter-node';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vite';
@@ -12,6 +12,14 @@ const basePath =
 	process.env.BASE_PATH && process.env.BASE_PATH !== '/'
 		? (process.env.BASE_PATH as `/${string}`)
 		: '';
+
+// On Vercel (VERCEL=1 during its build) use the Vercel adapter; everywhere else keep Node.
+const adapter = process.env.VERCEL
+	? (await import('@sveltejs/adapter-vercel')).default({
+			runtime: 'nodejs22.x',
+			maxDuration: 300
+		})
+	: nodeAdapter();
 
 export default defineConfig({
 	define: {
@@ -27,7 +35,7 @@ export default defineConfig({
 			},
 
 			// Set BASE_PATH=/intermittens on the hosted server.
-			adapter: adapter(),
+			adapter,
 			paths: {
 				base: basePath
 			}

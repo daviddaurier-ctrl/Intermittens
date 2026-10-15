@@ -39,6 +39,9 @@ function cookiePath() {
 export function passwordIsValid(candidate: string) {
 	const password = configuredPassword();
 	if (password) return safelyEqual(candidate, password);
+	// Hosted on Vercel without ACCESS_PASSWORD: refuse every login rather than fall back to the
+	// original author's built-in password.
+	if (env.VERCEL) return false;
 
 	const candidateDigest = scryptSync(candidate, DEFAULT_PASSWORD_SALT, 32);
 	const expectedDigest = Buffer.from(DEFAULT_PASSWORD_DIGEST, 'hex');
