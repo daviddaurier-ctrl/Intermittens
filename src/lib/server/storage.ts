@@ -17,6 +17,7 @@ import type {
 	AppData,
 	AuthorWork,
 	Company,
+	CongesPayment,
 	Contract,
 	ContractFields,
 	FutureContract,
@@ -99,6 +100,7 @@ export function createDefaultData(): AppData {
 		monthlyInfos: [],
 		works: [],
 		royalties: [],
+		congesPayments: [],
 		settings: {
 			referenceStartDate: `${new Date().getFullYear()}-01-01`,
 			targetHours: 507,
@@ -382,6 +384,22 @@ function normalizeRoyalty(payment: Partial<RoyaltyPayment>): RoyaltyPayment {
 	};
 }
 
+function normalizeCongesPayment(payment: Partial<CongesPayment>): CongesPayment {
+	return {
+		id: cleanString(payment.id) || createId('conges'),
+		paymentDate: cleanString(payment.paymentDate),
+		season: cleanString(payment.season),
+		grossAmount: normalizeNumber(payment.grossAmount),
+		netAmount: normalizeNumber(payment.netAmount),
+		taxableAmount: normalizeNumber(payment.taxableAmount),
+		withheldTax: normalizeNumber(payment.withheldTax),
+		days: normalizeNumber(payment.days),
+		fileName: cleanString(payment.fileName),
+		storedName: cleanString(payment.storedName),
+		notes: cleanString(payment.notes)
+	};
+}
+
 export function defaultTaxYear(): TaxYearSettings {
 	// Bounds of the 10 % deduction for 2025 income (declared in 2026); editable per year.
 	return {
@@ -436,6 +454,9 @@ export function normalizeData(input: Partial<AppData>): AppData {
 			: [],
 		works: Array.isArray(input.works) ? input.works.map(normalizeWork) : [],
 		royalties: Array.isArray(input.royalties) ? input.royalties.map(normalizeRoyalty) : [],
+		congesPayments: Array.isArray(input.congesPayments)
+			? input.congesPayments.map(normalizeCongesPayment)
+			: [],
 		settings: {
 			...settings,
 			targetHours: normalizeNumber(settings.targetHours) || defaults.settings.targetHours,
@@ -576,7 +597,8 @@ export function usedStoredFiles(data: AppData) {
 	return new Set([
 		...data.documents.map((document) => document.storedName).filter(Boolean),
 		...data.periods.map((period) => period.sourceStoredName).filter(Boolean),
-		...(data.royalties ?? []).map((payment) => payment.storedName).filter(Boolean)
+		...(data.royalties ?? []).map((payment) => payment.storedName).filter(Boolean),
+		...(data.congesPayments ?? []).map((payment) => payment.storedName).filter(Boolean)
 	]);
 }
 

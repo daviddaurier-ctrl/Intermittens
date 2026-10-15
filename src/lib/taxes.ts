@@ -37,6 +37,8 @@ export type TaxYearSummary = {
 	unemploymentIsEstimate: boolean;
 	congesSpectacles: number;
 	congesSpectaclesIsEstimate: boolean;
+	congesFromStatements: number;
+	congesWithheldTax: number;
 	royaltiesGross: number;
 	royaltiesWithheld: number;
 	royaltiesNet: number;
@@ -141,7 +143,24 @@ export function buildTaxYear(data: AppData, year: string, settings: TaxYearSetti
 
 	const sum = (key: keyof Omit<TaxMonth, 'month'>) => round2(months.reduce((total, month) => total + month[key], 0));
 	const estimatedUnemployment = sum('unemployment');
-	const estimatedConges = sum('congesSpectacles');
+	// Audiens statements paid this year are exact; otherwise fall back to the monthly amounts.
+	const statements = (data.congesPayments ?? []).filter((item) => item.paymentDate.startsWith(year));
+	const congesFromStatements = round2(statements.reduce((total, item) => total + item.taxableAmount, 0));
+	const congesWithheldTax = round2(statements.reduce((total, item) => total + item.withheldTax, 0));
+	if (statements.length) {
+		for (const month of months) {
+			month.total -= month.congesSpectacles;
+			month.congesSpectacles = 0;
+		}
+		for (const item of statements) {
+			const month = monthOf(item.paymentDate);
+			if (month) {
+				month.congesSpectacles = round2(month.congesSpectacles + item.taxableAmount);
+				month.total = round2(month.total + item.taxableAmount);
+			}
+		}
+	}
+	const estimatedConges = statements.length ? congesFromStatements : sum('congesSpectacles');
 	const unemployment = settings.unemploymentTaxable || estimatedUnemployment;
 	const congesSpectacles = settings.congesSpectaclesTaxable || estimatedConges;
 	const salaryTaxable = sum('salaryTaxable');
@@ -168,7 +187,9 @@ export function buildTaxYear(data: AppData, year: string, settings: TaxYearSetti
 		unemployment,
 		unemploymentIsEstimate: !settings.unemploymentTaxable,
 		congesSpectacles,
-		congesSpectaclesIsEstimate: !settings.congesSpectaclesTaxable,
+		congesSpectaclesIsEstimate: !settings.congesSpectaclesTaxable && !statements.length,
+		congesFromStatements,
+		congesWithheldTax,
 		royaltiesGross: round2(royaltiesGross),
 		royaltiesWithheld: round2(royaltiesWithheld),
 		royaltiesNet: round2(royaltiesNet),

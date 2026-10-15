@@ -164,6 +164,21 @@ export type RoyaltyPayment = {
 	storedName: string;
 };
 
+/** A Congés Spectacles (Audiens) payment statement: holiday pay, taxable in the year paid. */
+export type CongesPayment = {
+	id: string;
+	paymentDate: string;
+	season: string;
+	grossAmount: number;
+	netAmount: number;
+	taxableAmount: number;
+	withheldTax: number;
+	days: number;
+	fileName: string;
+	storedName: string;
+	notes: string;
+};
+
 export type TaxYearSettings = {
 	/** Deduction bounds for the 10 % flat professional-expenses allowance of that income year. */
 	flatDeductionMin: number;
@@ -224,6 +239,7 @@ export type AppData = {
 	monthlyInfos: MonthlyInfo[];
 	works: AuthorWork[];
 	royalties: RoyaltyPayment[];
+	congesPayments: CongesPayment[];
 	settings: AppSettings;
 };
 

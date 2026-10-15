@@ -85,6 +85,7 @@ type DocumentImportPayload = DocumentUploadPayload & {
 	periodIds: string[];
 	appliedFields: Partial<ContractFields>;
 	royaltyIds?: string[];
+	congesIds?: string[];
 };
 
 export type ContractImportFeedbackItem = {
@@ -920,6 +921,20 @@ export function createIntermittensState(initialData: AppData) {
 			importedCount += 1;
 			appData = payload.data;
 			mergeCompanySuggestions(payload.companySuggestions);
+
+			if (payload.congesIds !== undefined) {
+				items.push({
+					fileName: file.name,
+					status: 'success',
+					kind: 'Relevé Congés Spectacles',
+					destination: payload.congesIds.length
+						? 'Ajouté au bilan de l’onglet Impôts'
+						: 'Déjà présent dans l’onglet Impôts',
+					fields: [],
+					warnings: []
+				});
+				continue;
+			}
 
 			if (payload.royaltyIds !== undefined) {
 				items.push({

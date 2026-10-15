@@ -30,6 +30,7 @@ import {
 	syncHeaders
 } from '$lib/server/remoteSync';
 import { extractAnalytique, linkContractToProject } from '$lib/server/projectFromPayslip';
+import { analyzeCongesStatement } from '$lib/server/congesAnalysis';
 import { analyzeRoyaltyStatement } from '$lib/server/royaltyAnalysis';
 import {
 	createId,
@@ -488,6 +489,38 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 	if (remotePayload) return json(remotePayload);
 
 	const parts = await splitAndClassifyDocument(file.name, file.type, buffer, kind);
+
+	// Congés Spectacles payment statements: holiday pay for the tax summary, not a contract.
+	const conges = analyzeCongesStatement(parts.map((part) => part.text).join('\n'));
+	if (conges) {
+		const congesId = createId('conges');
+		const storedName = `${congesId}-${safeName || 'conges-spectacles.pdf'}`;
+		await writeStoredFile(storedName, buffer);
+		let duplicate = false;
+		const data = await mutateData((current) => {
+			current.congesPayments ??= [];
+			duplicate = current.congesPayments.some(
+				(item) => item.paymentDate === conges.paymentDate && item.netAmount === conges.netAmount
+			);
+			if (!duplicate) {
+				current.congesPayments.unshift({ ...conges, id: congesId, fileName: file.name, storedName });
+			}
+			return current;
+		});
+		if (duplicate) await deleteStoredFiles([storedName]);
+		return json({
+			data,
+			congesIds: duplicate ? [] : [congesId],
+			documentIds: [],
+			periodIds: [],
+			appliedFields: {},
+			companySuggestions: [],
+			createdContractId: '',
+			routedContractId: '',
+			analysis: { notes: ['Relevé Congés Spectacles ajouté au bilan Impôts.'] },
+			message: duplicate ? 'Relevé déjà présent.' : 'Relevé Congés Spectacles ajouté.'
+		});
+	}
 
 	// Royalty statements are author income: file them in the royalties tab, not as a contract.
 	const royalty = analyzeRoyaltyStatement(parts.map((part) => part.text).join('\n'), file.name);

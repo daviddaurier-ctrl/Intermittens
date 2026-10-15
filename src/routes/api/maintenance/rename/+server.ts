@@ -27,6 +27,9 @@ export const POST: RequestHandler = async () => {
 		data.royalties.forEach((item, index) => {
 			item.storedName = restore(item.storedName, before.royalties[index].storedName);
 		});
+		data.congesPayments.forEach((item, index) => {
+			item.storedName = restore(item.storedName, before.congesPayments[index].storedName);
+		});
 	}
 
 	const saved = await saveData(data);

@@ -77,7 +77,11 @@
 	<div class="metric">
 		<span>Déjà prélevé à la source</span>
 		<strong>{formatCurrency(summary.withheldAtSource)}</strong>
-		<small>à saisir (relevé impots.gouv)</small>
+		<small
+			>{summary.withheldAtSource ? 'saisi' : 'à saisir (relevé impots.gouv)'}{summary.congesWithheldTax
+				? ` · dont ${formatCurrency(summary.congesWithheldTax)} sur les Congés Spect.`
+				: ''}</small
+		>
 	</div>
 </section>
 
@@ -103,7 +107,8 @@
 					<tr>
 						<td>
 							Indemnités Congés Spectacles
-							{#if summary.congesSpectaclesIsEstimate}<small> · estimation</small>{/if}
+							{#if summary.congesSpectaclesIsEstimate}<small> · estimation</small>
+							{:else if summary.congesFromStatements && !settings.congesSpectaclesTaxable}<small> · relevé Audiens</small>{/if}
 						</td>
 						<td class="num">{formatPreciseCurrency(summary.congesSpectacles)}</td>
 					</tr>

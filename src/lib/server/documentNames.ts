@@ -108,7 +108,8 @@ export function planReadableNames(data: AppData): RenamePlan[] {
 	const allNames = new Set([
 		...data.documents.map((item) => item.storedName),
 		...data.periods.map((item) => item.sourceStoredName),
-		...data.royalties.map((item) => item.storedName)
+		...data.royalties.map((item) => item.storedName),
+		...(data.congesPayments ?? []).map((item) => item.storedName)
 	].filter(Boolean));
 
 	const renamed = new Map<string, string>();
@@ -150,6 +151,15 @@ export function planReadableNames(data: AppData): RenamePlan[] {
 			extensionOf(period.sourceStoredName)
 		);
 		period.sourceStoredName = rename(period.sourceStoredName, wanted);
+	}
+
+	for (const payment of data.congesPayments ?? []) {
+		if (!payment.storedName) continue;
+		const wanted = build(
+			[monthOf(payment.paymentDate), 'CongesSpectacles', 'audiens', payment.season ? `saison-${payment.season}` : ''],
+			extensionOf(payment.storedName)
+		);
+		payment.storedName = rename(payment.storedName, wanted);
 	}
 
 	for (const payment of data.royalties) {
