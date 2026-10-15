@@ -968,11 +968,21 @@ function analyzeAudiovisualPayroll(text: string) {
 		new RegExp(String.raw`\*{4}\s*brut\s*\*{4}\s+${moneyPattern}`, 'i')
 	);
 	const netSalary = matchFirstMoney(text, netSocialPattern);
-	// "Impôt sur le revenu prélevé à la source <base> <montant>": the base is the period's taxable net.
-	const taxableNetSalary = matchFirstMoney(
-		text,
-		new RegExp(String.raw`\bimpot sur le revenu preleve a la source\s+${moneyPattern}`, 'i')
-	);
+	// "Montant net imposable <cumul> <…> <…> <période> …": the 4th amount is the period's taxable
+	// net. Fallback: the withholding-tax base, which is usually (not always) the same.
+	const taxableNetSalary =
+		toNumber(
+			text.match(
+				new RegExp(
+					String.raw`\bmontant net imposable\s+${moneyPattern}\s+${moneyPattern}\s+${moneyPattern}\s+${moneyPattern}`,
+					'i'
+				)
+			)?.[4]
+		) ??
+		matchFirstMoney(
+			text,
+			new RegExp(String.raw`\bimpot sur le revenu preleve a la source\s+${moneyPattern}`, 'i')
+		);
 	const contributions = matchFirstMoney(
 		text,
 		new RegExp(`\\b${looseWords('total des cotisations et contributions')}\\s+${moneyPattern}`, 'i')

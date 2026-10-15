@@ -29,11 +29,10 @@ function flatten(text: string) {
 
 export function isRoyaltyStatement(text: string) {
 	const flat = flatten(text).toLowerCase();
-	return (
-		/\bdecompte de droits\b/.test(flat) ||
-		/\bnote de droits d auteurs?\b/.test(flat) ||
-		(/\bdroits d auteurs?\b/.test(flat) && /\b(agessa|raap|racd)\b/.test(flat))
-	);
+	// A statement, not a contract: a "décompte"/"note" header and an amount actually paid.
+	if (/\bcontrat de cession\b|\bcontrat d auteur\b/.test(flat)) return false;
+	const hasHeader = /\bdecompte de droits\b/.test(flat) || /\bnote de droits d auteurs?\b/.test(flat);
+	return hasHeader && /\bnet a payer\b/.test(flat);
 }
 
 export function analyzeRoyaltyStatement(
