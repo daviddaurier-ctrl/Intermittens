@@ -157,9 +157,30 @@ export type RoyaltyPayment = {
 	contributionsWithheld: boolean;
 	status: RoyaltyStatus;
 	notes: string;
+	/** Net imposable printed on the statement (0 when unknown). */
+	taxableAmount: number;
 	/** Attached statement (stored like contract documents). */
 	fileName: string;
 	storedName: string;
+};
+
+export type TaxYearSettings = {
+	/** Deduction bounds for the 10 % flat professional-expenses allowance of that income year. */
+	flatDeductionMin: number;
+	flatDeductionMax: number;
+	/** Taxable unemployment benefits from France Travail's yearly tax certificate (0 = estimate). */
+	unemploymentTaxable: number;
+	/** Taxable Congés Spectacles indemnities from the Audiens certificate (0 = estimate). */
+	congesSpectaclesTaxable: number;
+	/** Income tax already withheld at source during the year (PAS). */
+	withheldAtSource: number;
+	/** Actual professional expenses ("frais réels"). */
+	mileageKm: number;
+	mileageRate: number;
+	meals: number;
+	equipment: number;
+	otherExpenses: number;
+	notes: string;
 };
 
 export type AppSettings = {
@@ -188,6 +209,7 @@ export type AppSettings = {
 	remoteLastSyncStatus: string;
 	driveImportFolder: string;
 	driveImportedFileIds: string[];
+	taxYears: Record<string, TaxYearSettings>;
 };
 
 export type AppData = {

@@ -1903,3 +1903,31 @@ pre {
 	color: #aab4af;
 	font-size: 13px;
 }
+
+/* ---- Impôts ---- */
+
+.tax-compare {
+	margin: 12px 0 8px;
+}
+
+.tax-compare > div.best {
+	border-color: rgba(103, 216, 194, 0.55);
+	background: rgba(103, 216, 194, 0.08);
+}
+
+.tax-subtitle {
+	margin: 16px 0 8px;
+	font-size: 15px;
+}
+
+.pair-inputs {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 6px;
+}
+
+.panel > .hint {
+	margin: 8px 0 0;
+	color: #aab4af;
+	font-size: 13px;
+}

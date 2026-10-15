@@ -27,6 +27,7 @@ import type {
 	RoyaltyPayment,
 	RoyaltySource,
 	RoyaltyStatus,
+	TaxYearSettings,
 	WorkKind
 } from '$lib/types';
 
@@ -123,7 +124,8 @@ export function createDefaultData(): AppData {
 			remoteLastSyncAt: '',
 			remoteLastSyncStatus: 'Synchronisation distante non activée',
 			driveImportFolder: 'salaire',
-			driveImportedFileIds: []
+			driveImportedFileIds: [],
+			taxYears: {}
 		}
 	};
 }
@@ -367,8 +369,50 @@ function normalizeRoyalty(payment: Partial<RoyaltyPayment>): RoyaltyPayment {
 		contributionsWithheld: payment.contributionsWithheld !== false,
 		status: pick(payment.status, royaltyStatuses, 'Reçu'),
 		notes: cleanString(payment.notes),
+		taxableAmount:
+			normalizeNumber(payment.taxableAmount) ||
+			normalizeNumber(
+				cleanString(payment.notes)
+					.match(/net imposable\s*:\s*([0-9 ]+(?:,[0-9]+)?)/i)?.[1]
+					?.replace(/\s/g, '')
+					.replace(',', '.')
+			),
 		fileName: cleanString(payment.fileName),
 		storedName: cleanString(payment.storedName)
+	};
+}
+
+export function defaultTaxYear(): TaxYearSettings {
+	// Bounds of the 10 % deduction for 2025 income (declared in 2026); editable per year.
+	return {
+		flatDeductionMin: 509,
+		flatDeductionMax: 14555,
+		unemploymentTaxable: 0,
+		congesSpectaclesTaxable: 0,
+		withheldAtSource: 0,
+		mileageKm: 0,
+		mileageRate: 0,
+		meals: 0,
+		equipment: 0,
+		otherExpenses: 0,
+		notes: ''
+	};
+}
+
+function normalizeTaxYear(value: Partial<TaxYearSettings>): TaxYearSettings {
+	const defaults = defaultTaxYear();
+	return {
+		flatDeductionMin: normalizeNumber(value.flatDeductionMin ?? defaults.flatDeductionMin),
+		flatDeductionMax: normalizeNumber(value.flatDeductionMax ?? defaults.flatDeductionMax),
+		unemploymentTaxable: normalizeNumber(value.unemploymentTaxable),
+		congesSpectaclesTaxable: normalizeNumber(value.congesSpectaclesTaxable),
+		withheldAtSource: normalizeNumber(value.withheldAtSource),
+		mileageKm: normalizeNumber(value.mileageKm),
+		mileageRate: normalizeNumber(value.mileageRate),
+		meals: normalizeNumber(value.meals),
+		equipment: normalizeNumber(value.equipment),
+		otherExpenses: normalizeNumber(value.otherExpenses),
+		notes: cleanString(value.notes)
 	};
 }
 
@@ -430,7 +474,16 @@ export function normalizeData(input: Partial<AppData>): AppData {
 			driveImportFolder: cleanString(settings.driveImportFolder) || 'salaire',
 			driveImportedFileIds: Array.isArray(settings.driveImportedFileIds)
 				? settings.driveImportedFileIds.map(String)
-				: []
+				: [],
+			taxYears:
+				settings.taxYears && typeof settings.taxYears === 'object'
+					? Object.fromEntries(
+							Object.entries(settings.taxYears).map(([year, value]) => [
+								year,
+								normalizeTaxYear(value as Partial<TaxYearSettings>)
+							])
+						)
+					: {}
 		}
 	};
 }

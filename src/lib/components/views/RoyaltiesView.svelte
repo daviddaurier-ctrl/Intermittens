@@ -60,7 +60,8 @@
 			status: 'Reçu',
 			notes: '',
 			fileName: '',
-			storedName: ''
+			storedName: '',
+			taxableAmount: 0
 		};
 		appState.appData.royalties.unshift(payment);
 		selectedPaymentId = payment.id;

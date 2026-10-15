@@ -89,6 +89,7 @@ export function analyzeRoyaltyStatement(
 		netAmount,
 		contributionsWithheld: withheldContributions > 0,
 		status: 'Reçu',
-		notes
+		notes,
+		taxableAmount: taxable ?? 0
 	};
 }

@@ -33,7 +33,8 @@ export type Tab =
 	| 'structures'
 	| 'stats'
 	| 'intermittence'
-	| 'droits';
+	| 'droits'
+	| 'impots';
 
 export const tabs: { id: Tab; label: string }[] = [
 	{ id: 'pilotage', label: 'Dashboard' },
@@ -42,7 +43,8 @@ export const tabs: { id: Tab; label: string }[] = [
 	{ id: 'structures', label: 'Structures' },
 	{ id: 'stats', label: 'Stats' },
 	{ id: 'intermittence', label: 'Intermittence' },
-	{ id: 'droits', label: "Droits d'auteur" }
+	{ id: 'droits', label: "Droits d'auteur" },
+	{ id: 'impots', label: 'Impôts' }
 ];
 
 export const statuses: ContractStatus[] = ['Estimation', 'Signé', 'Payé'];
