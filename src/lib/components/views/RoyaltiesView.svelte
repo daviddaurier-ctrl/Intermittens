@@ -246,7 +246,7 @@
 						min="0"
 						step="0.01"
 						bind:value={selectedPayment.withheldContributions}
-						onchange={() => fillNet(selectedPayment)}
+						onchange={() => fillNet(selectedPayment!)}
 					/>
 				</label>
 				<label>
@@ -276,7 +276,7 @@
 					<textarea rows="2" bind:value={selectedPayment.notes}></textarea>
 				</label>
 				<div class="button-row wide">
-					<button class="danger" type="button" onclick={() => removePayment(selectedPayment)}>
+					<button class="danger" type="button" onclick={() => removePayment(selectedPayment!)}>
 						Supprimer
 					</button>
 				</div>
@@ -449,7 +449,7 @@
 				</label>
 				<div class="button-row wide">
 					<button type="button" onclick={addPayment}>+ Versement pour cette œuvre</button>
-					<button class="danger" type="button" onclick={() => removeWork(selectedWork)}>Supprimer</button>
+					<button class="danger" type="button" onclick={() => removeWork(selectedWork!)}>Supprimer</button>
 				</div>
 			</div>
 		{:else}
