@@ -157,6 +157,9 @@ export type RoyaltyPayment = {
 	contributionsWithheld: boolean;
 	status: RoyaltyStatus;
 	notes: string;
+	/** Attached statement (stored like contract documents). */
+	fileName: string;
+	storedName: string;
 };
 
 export type AppSettings = {

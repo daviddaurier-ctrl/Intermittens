@@ -82,6 +82,7 @@ type DocumentImportPayload = DocumentUploadPayload & {
 	documentIds: string[];
 	periodIds: string[];
 	appliedFields: Partial<ContractFields>;
+	royaltyIds?: string[];
 };
 
 export type ContractImportFeedbackItem = {
@@ -908,6 +909,20 @@ export function createIntermittensState(initialData: AppData) {
 			importedCount += 1;
 			appData = payload.data;
 			mergeCompanySuggestions(payload.companySuggestions);
+
+			if (payload.royaltyIds !== undefined) {
+				items.push({
+					fileName: file.name,
+					status: 'success',
+					kind: 'Note de droits d’auteur',
+					destination: payload.royaltyIds.length
+						? 'Ajoutée à l’onglet Droits d’auteur'
+						: 'Déjà présente dans l’onglet Droits d’auteur',
+					fields: [],
+					warnings: []
+				});
+				continue;
+			}
 
 			const routedContractId = payload.routedContractId || payload.createdContractId || '';
 			const addedDocumentCount = (payload.documentIds ?? []).length;

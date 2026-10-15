@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import type { IntermittensState } from '$lib/app/state.svelte';
 	import DateInput from '$lib/components/DateInput.svelte';
 	import { formatCurrency, formatDate, formatNumber, formatPreciseCurrency } from '$lib/format';
@@ -57,7 +58,9 @@
 			netAmount: 0,
 			contributionsWithheld: true,
 			status: 'Reçu',
-			notes: ''
+			notes: '',
+			fileName: '',
+			storedName: ''
 		};
 		appState.appData.royalties.unshift(payment);
 		selectedPaymentId = payment.id;
@@ -275,6 +278,14 @@
 					<span>Notes</span>
 					<textarea rows="2" bind:value={selectedPayment.notes}></textarea>
 				</label>
+				{#if selectedPayment.storedName}
+					<p class="wide royalty-document">
+						Document :
+						<a href={`${base}/api/royalties/${selectedPayment.id}/document`} target="_blank" rel="noreferrer"
+							>{selectedPayment.fileName || 'voir le PDF'} ↗</a
+						>
+					</p>
+				{/if}
 				<div class="button-row wide">
 					<button class="danger" type="button" onclick={() => removePayment(selectedPayment!)}>
 						Supprimer

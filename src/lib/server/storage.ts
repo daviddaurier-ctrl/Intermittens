@@ -363,7 +363,9 @@ function normalizeRoyalty(payment: Partial<RoyaltyPayment>): RoyaltyPayment {
 		netAmount: normalizeNumber(payment.netAmount),
 		contributionsWithheld: payment.contributionsWithheld !== false,
 		status: pick(payment.status, royaltyStatuses, 'Reçu'),
-		notes: cleanString(payment.notes)
+		notes: cleanString(payment.notes),
+		fileName: cleanString(payment.fileName),
+		storedName: cleanString(payment.storedName)
 	};
 }
 
@@ -505,7 +507,8 @@ export async function deleteStoredFiles(storedNames: string[]) {
 export function usedStoredFiles(data: AppData) {
 	return new Set([
 		...data.documents.map((document) => document.storedName).filter(Boolean),
-		...data.periods.map((period) => period.sourceStoredName).filter(Boolean)
+		...data.periods.map((period) => period.sourceStoredName).filter(Boolean),
+		...(data.royalties ?? []).map((payment) => payment.storedName).filter(Boolean)
 	]);
 }
 

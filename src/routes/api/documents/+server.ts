@@ -29,8 +29,10 @@ import {
 	pushDataToRemote,
 	syncHeaders
 } from '$lib/server/remoteSync';
+import { analyzeRoyaltyStatement } from '$lib/server/royaltyAnalysis';
 import {
 	createId,
+	deleteStoredFiles,
 	mutateData,
 	readData,
 	saveData,
@@ -485,6 +487,46 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 	if (remotePayload) return json(remotePayload);
 
 	const parts = await splitAndClassifyDocument(file.name, file.type, buffer, kind);
+
+	// Royalty statements are author income: file them in the royalties tab, not as a contract.
+	const royalty = analyzeRoyaltyStatement(parts.map((part) => part.text).join('\n'), file.name);
+	if (royalty) {
+		const royaltyId = createId('royalty');
+		const storedName = `${royaltyId}-${safeName || 'note-de-droits.pdf'}`;
+		await writeStoredFile(storedName, buffer);
+		let duplicate = false;
+		const data = await mutateData((current) => {
+			duplicate = current.royalties.some(
+				(item) =>
+					item.paymentDate === royalty.paymentDate &&
+					item.payerName === royalty.payerName &&
+					item.netAmount === royalty.netAmount &&
+					item.grossAmount === royalty.grossAmount
+			);
+			if (!duplicate) {
+				current.royalties.unshift({
+					...royalty,
+					id: royaltyId,
+					fileName: file.name,
+					storedName
+				});
+			}
+			return current;
+		});
+		if (duplicate) await deleteStoredFiles([storedName]);
+		return json({
+			data,
+			royaltyIds: duplicate ? [] : [royaltyId],
+			documentIds: [],
+			periodIds: [],
+			appliedFields: {},
+			companySuggestions: [],
+			createdContractId: '',
+			routedContractId: '',
+			analysis: { notes: [duplicate ? 'Note de droits déjà présente.' : 'Note de droits d’auteur ajoutée.'] },
+			message: duplicate ? 'Note de droits déjà présente.' : 'Note de droits d’auteur ajoutée.'
+		});
+	}
 	const preparedDocuments: ContractDocument[] = [];
 	const preparedPeriods: IntermittencePeriod[] = [];
 	const preparedDocumentTexts = new Map<string, string>();
