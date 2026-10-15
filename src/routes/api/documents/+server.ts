@@ -29,6 +29,7 @@ import {
 	pushDataToRemote,
 	syncHeaders
 } from '$lib/server/remoteSync';
+import { extractAnalytique, linkContractToProject } from '$lib/server/projectFromPayslip';
 import { analyzeRoyaltyStatement } from '$lib/server/royaltyAnalysis';
 import {
 	createId,
@@ -708,6 +709,14 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 						: 'Statut du contrat passé automatiquement en Signé.'
 				);
 			}
+		}
+
+		// Payslips name the production on their "Analytique" line: file the contract under it.
+		if (contract && autoRoute && !contract.projectId) {
+			const analytique = extractAnalytique(
+				[...preparedDocumentTexts.values(), ...parts.map((part) => part.text)].join('\n')
+			);
+			if (analytique) linkContractToProject(current, contract, analytique);
 		}
 
 		if (contract && autoRoute) {

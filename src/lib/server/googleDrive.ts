@@ -137,12 +137,47 @@ async function folderFor(area: 'root' | 'documents') {
 	return area === 'root' ? rootFolderId() : documentsFolderId();
 }
 
+/** Type folders the app files documents into, directly under the InterMittens folder. */
+export const DOCUMENT_TYPE_FOLDERS = [
+	'Bulletins de salaire',
+	'AEM',
+	'Contrats',
+	'Congés Spectacles',
+	'Décomptes de droits',
+	'Notifications ARE',
+	'GUSO',
+	'Autres'
+];
+
+const subfolderIds = new Map<string, string>();
+
+async function subfolderId(name: string) {
+	const cached = subfolderIds.get(name);
+	if (cached) return cached;
+	const id = await ensureFolder(name, await rootFolderId());
+	subfolderIds.set(name, id);
+	return id;
+}
+
+/**
+ * Where a stored name lives. "Folder/file.pdf" is a type folder of the InterMittens folder;
+ * a bare name stays in the legacy "documents" folder (or the root for the data file).
+ */
+async function locate(area: 'root' | 'documents', name: string) {
+	const slash = name.lastIndexOf('/');
+	if (area === 'documents' && slash > 0) {
+		return { parentId: await subfolderId(name.slice(0, slash)), base: name.slice(slash + 1) };
+	}
+	return { parentId: await folderFor(area), base: name };
+}
+
 async function fileId(area: 'root' | 'documents', name: string) {
 	const key = `${area}/${name}`;
 	const cached = fileIdCache.get(key);
 	if (cached) return cached;
 
-	const found = await findChild(await folderFor(area), name);
+	const { parentId, base } = await locate(area, name);
+	const found = await findChild(parentId, base);
 	if (found) fileIdCache.set(key, found.id);
 	return found?.id;
 }
@@ -166,8 +201,9 @@ export async function driveWriteFile(
 	mimeType = 'application/octet-stream'
 ) {
 	const existingId = await fileId(area, name);
+	const { parentId, base } = await locate(area, name);
 	const boundary = `intermittens_${Math.random().toString(36).slice(2)}`;
-	const metadata = existingId ? { name } : { name, parents: [await folderFor(area)] };
+	const metadata = existingId ? { name: base } : { name: base, parents: [parentId] };
 	const body = Buffer.concat([
 		Buffer.from(
 			`--${boundary}\r\ncontent-type: application/json; charset=UTF-8\r\n\r\n` +
@@ -190,14 +226,22 @@ export async function driveWriteFile(
 	return id;
 }
 
+/** Renames a stored file, moving it to another type folder when the folder part changes. */
 export async function driveRenameFile(area: 'root' | 'documents', name: string, newName: string) {
 	const id = await fileId(area, name);
 	if (!id) return false;
 
-	await driveFetch(`${API}/files/${id}`, {
+	const from = await locate(area, name);
+	const to = await locate(area, newName);
+	const params = new URLSearchParams({ fields: 'id' });
+	if (from.parentId !== to.parentId) {
+		params.set('addParents', to.parentId);
+		params.set('removeParents', from.parentId);
+	}
+	await driveFetch(`${API}/files/${id}?${params}`, {
 		method: 'PATCH',
 		headers: { 'content-type': 'application/json' },
-		body: JSON.stringify({ name: newName })
+		body: JSON.stringify({ name: to.base })
 	});
 	fileIdCache.delete(`${area}/${name}`);
 	fileIdCache.set(`${area}/${newName}`, id);
@@ -218,9 +262,8 @@ export async function driveTrashFile(area: 'root' | 'documents', name: string) {
 	return true;
 }
 
-export async function driveListFiles(area: 'root' | 'documents') {
-	const parentId = await folderFor(area);
-	const names: string[] = [];
+async function listFolderFileNames(parentId: string) {
+	const files: DriveFile[] = [];
 	let pageToken = '';
 
 	do {
@@ -234,13 +277,35 @@ export async function driveListFiles(area: 'root' | 'documents') {
 
 		const response = await driveFetch(`${API}/files?${params}`);
 		const payload = (await response.json()) as { files?: DriveFile[]; nextPageToken?: string };
-		for (const file of payload.files ?? []) {
-			names.push(file.name);
-			fileIdCache.set(`${area}/${file.name}`, file.id);
-		}
+		files.push(...(payload.files ?? []));
 		pageToken = payload.nextPageToken ?? '';
 	} while (pageToken);
 
+	return files;
+}
+
+/**
+ * Stored names of every file the app manages: the legacy "documents" folder plus its own type
+ * folders. Folders the owner created themselves inside InterMittens are never listed.
+ */
+export async function driveListFiles(area: 'root' | 'documents') {
+	const names: string[] = [];
+	for (const file of await listFolderFileNames(await folderFor(area))) {
+		names.push(file.name);
+		fileIdCache.set(`${area}/${file.name}`, file.id);
+	}
+	if (area !== 'documents') return names;
+
+	for (const folder of DOCUMENT_TYPE_FOLDERS) {
+		const existing = subfolderIds.get(folder) ?? (await findChild(await rootFolderId(), folder, FOLDER_MIME))?.id;
+		if (!existing) continue;
+		subfolderIds.set(folder, existing);
+		for (const file of await listFolderFileNames(existing)) {
+			const stored = `${folder}/${file.name}`;
+			names.push(stored);
+			fileIdCache.set(`documents/${stored}`, file.id);
+		}
+	}
 	return names;
 }
 

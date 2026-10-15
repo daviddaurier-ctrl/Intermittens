@@ -65,8 +65,21 @@ function extensionOf(name: string) {
 	return match ? `.${match[1]}` : '.pdf';
 }
 
+const FOLDER_BY_TYPE: Record<string, string> = {
+	Bulletin: 'Bulletins de salaire',
+	AEM: 'AEM',
+	Contrat: 'Contrats',
+	CongesSpectacles: 'Congés Spectacles',
+	NoteDroits: 'Décomptes de droits',
+	ARE: 'Notifications ARE',
+	Guso: 'GUSO',
+	Document: 'Autres'
+};
+
+/** "Folder/AAAAMM_Type_employeur_projet.ext"; parts[1] is the document type. */
 function build(parts: string[], extension: string) {
-	return `${parts.filter(Boolean).join('_')}${extension}`;
+	const folder = FOLDER_BY_TYPE[parts[1]] ?? 'Autres';
+	return `${folder}/${parts.filter(Boolean).join('_')}${extension}`;
 }
 
 export type RenamePlan = { from: string; to: string };

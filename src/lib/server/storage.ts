@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { defaultCompanyColor, normalizeCompanyColor } from '$lib/companyColors';
 import {
+	DOCUMENT_TYPE_FOLDERS,
 	driveEnabled,
 	driveListFiles,
 	driveReadFile,
@@ -152,8 +153,9 @@ export async function writeStoredFile(storedName: string, content: Buffer | Uint
 		await driveWriteFile('documents', storedName, content, mimeTypeFor(storedName));
 		return;
 	}
-	await mkdir(documentDir, { recursive: true });
-	await writeFile(resolveStoredDocumentPath(storedName), content);
+	const target = resolveStoredDocumentPath(storedName);
+	await mkdir(path.dirname(target), { recursive: true });
+	await writeFile(target, content);
 }
 
 export async function readStoredFile(storedName: string) {
@@ -487,7 +489,9 @@ function resolveStoredDocumentPath(storedName: string) {
 export async function renameStoredFile(storedName: string, newName: string) {
 	if (useDrive()) return driveRenameFile('documents', storedName, newName);
 	try {
-		await rename(resolveStoredDocumentPath(storedName), resolveStoredDocumentPath(newName));
+		const target = resolveStoredDocumentPath(newName);
+		await mkdir(path.dirname(target), { recursive: true });
+		await rename(resolveStoredDocumentPath(storedName), target);
 		return true;
 	} catch {
 		return false;
@@ -530,7 +534,14 @@ export async function cleanupUnusedDocumentFiles(data: AppData) {
 		files = await driveListFiles('documents');
 	} else {
 		await mkdir(documentDir, { recursive: true });
-		files = await readdir(documentDir);
+		const entries = await readdir(documentDir, { withFileTypes: true });
+		files = entries.filter((entry) => entry.isFile()).map((entry) => entry.name);
+		for (const folder of DOCUMENT_TYPE_FOLDERS) {
+			const nested = await readdir(path.join(documentDir, folder), { withFileTypes: true }).catch(
+				() => []
+			);
+			files.push(...nested.filter((entry) => entry.isFile()).map((entry) => `${folder}/${entry.name}`));
+		}
 	}
 	const unused = files.filter((file) => !used.has(file));
 	const deletedFiles = await deleteStoredFiles(unused);
