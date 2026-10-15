@@ -29,8 +29,9 @@
 				</p>
 			{:else}
 				<p class="access-intro">
-					Cliquez ci-dessous, choisissez votre compte Google et acceptez l'accès. L'appli ne verra
-					que les fichiers qu'elle crée elle-même dans votre Drive.
+					Cliquez ci-dessous, choisissez votre compte Google et acceptez l'accès. L'appli range ses
+					données dans un dossier « InterMittens » et peut lire vos dossiers existants pour importer
+					vos documents.
 				</p>
 			{/if}
 			<form method="POST" class="access-form">

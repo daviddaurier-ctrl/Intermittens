@@ -12,8 +12,9 @@
 		</p>
 		<p class="access-intro">
 			L'application enregistre ses données et les documents importés dans un dossier
-			« InterMittens » du Google Drive de son propriétaire. Elle n'accède qu'aux fichiers qu'elle a
-			elle-même créés, ne partage aucune donnée avec des tiers et n'utilise ni publicité ni outil
+			« InterMittens » du Google Drive de son propriétaire. Elle peut lire les dossiers de ce Drive
+			pour importer les documents choisis par son propriétaire (bulletins de salaire, attestations),
+			ne modifie que les fichiers qu'elle a elle-même créés, ne partage aucune donnée avec des tiers et n'utilise ni publicité ni outil
 			de mesure d'audience.
 		</p>
 		<p class="access-note">

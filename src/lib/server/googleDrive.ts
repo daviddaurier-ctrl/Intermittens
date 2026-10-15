@@ -11,7 +11,12 @@
  */
 import { env } from '$env/dynamic/private';
 
-export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+// drive.file: files the app creates; drive.readonly: read the owner's existing folders
+// (payslips, AEM...) to import them.
+export const DRIVE_SCOPE = [
+	'https://www.googleapis.com/auth/drive.file',
+	'https://www.googleapis.com/auth/drive.readonly'
+].join(' ');
 const API = 'https://www.googleapis.com/drive/v3';
 const UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
