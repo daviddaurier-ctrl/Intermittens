@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+
 	import { createIntermittensState } from '$lib/app/state.svelte';
 	import AppShell from '$lib/components/AppShell.svelte';
 	import MetricsGrid from '$lib/components/MetricsGrid.svelte';
@@ -21,6 +23,12 @@
 	}
 
 	const state = createIntermittensState(getInitialData());
+
+	// Each time the app opens, pick up any new document dropped in the Drive folder.
+	onMount(() => {
+		const folder = state.appData.settings.driveImportFolder;
+		if (folder) void state.importFromDrive(folder, { automatic: true });
+	});
 </script>
 
 <svelte:head>

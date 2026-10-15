@@ -736,9 +736,10 @@ export function createIntermittensState(initialData: AppData) {
 	type DriveFileEntry = { id: string; name: string; mimeType: string; size: number };
 
 	/** Imports the new documents of a Google Drive folder through the normal import pipeline. */
-	async function importFromDrive(folderName: string) {
+	async function importFromDrive(folderName: string, options: { automatic?: boolean } = {}) {
 		const folder = folderName.trim();
 		if (!folder || driveImportState.running) return;
+		const automatic = Boolean(options.automatic);
 
 		driveImportState = { running: true, message: `Recherche du dossier « ${folder} »…` };
 		try {
@@ -751,7 +752,10 @@ export function createIntermittensState(initialData: AppData) {
 				message?: string;
 			}>(listResponse, { message: 'Réponse serveur illisible.' });
 			if (!listResponse.ok || !listing.files) {
-				driveImportState = { running: false, message: listing.message ?? 'Dossier illisible.' };
+				driveImportState = {
+					running: false,
+					message: automatic ? '' : (listing.message ?? 'Dossier illisible.')
+				};
 				return;
 			}
 
@@ -763,9 +767,15 @@ export function createIntermittensState(initialData: AppData) {
 			if (!pending.length) {
 				driveImportState = {
 					running: false,
-					message: `Aucun nouveau document dans « ${folder} ».${tooLargeNote}`
+					message: automatic ? '' : `Aucun nouveau document dans « ${folder} ».${tooLargeNote}`
 				};
 				return;
+			}
+			if (automatic) {
+				driveImportState = {
+					running: true,
+					message: `${pending.length} nouveau(x) document(s) trouvé(s) dans « ${folder} », import automatique…`
+				};
 			}
 
 			const files: File[] = [];
@@ -807,7 +817,11 @@ export function createIntermittensState(initialData: AppData) {
 		} catch (cause) {
 			driveImportState = {
 				running: false,
-				message: cause instanceof Error ? cause.message : 'Import Drive impossible.'
+				message: automatic
+					? ''
+					: cause instanceof Error
+						? cause.message
+						: 'Import Drive impossible.'
 			};
 		}
 	}
