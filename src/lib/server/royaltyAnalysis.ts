@@ -60,9 +60,13 @@ export function analyzeRoyaltyStatement(
 		flat.match(/note de droits d auteurs?\s+(.+?)\s+(?:periode|date)/i)?.[1]?.trim() ||
 		'';
 	const statementNumber = flat.match(/decompte n\S*\s*([0-9]+)/i)?.[1];
+	// Project line after "Coût Total Diffuseur x x": optional numeric or code prefix ("203",
+	// "SP2511MONTAG"), optional "/ 1112" suffix.
 	const project = flat
-		.match(/cout total diffuseur\s+\S+\s+\S+\s+\d+\s+(.+?)\s+brut\b/i)?.[1]
-		?.trim();
+		.match(/cout total diffuseur\s+\S+\s+\S+\s+(.+?)\s+brut\b/i)?.[1]
+		?.replace(/^(?:\d+|[A-Z]{1,4}\d+\S*)\s+/i, '')
+		.replace(/\s*\/\s*\d+$/, '')
+		.trim();
 
 	const label = [statementNumber ? `Décompte n° ${statementNumber}` : '', project ?? '']
 		.filter(Boolean)
