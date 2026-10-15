@@ -1,6 +1,11 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 
-import { driveEnabled, driveFindFolder, driveListImportableFiles } from '$lib/server/googleDrive';
+import {
+	driveEnabled,
+	driveFindFolder,
+	driveListImportableFiles,
+	driveVisibleFolderNames
+} from '$lib/server/googleDrive';
 
 // Vercel caps request and response bodies at 4.5 MB; keep a margin for the upload step.
 const MAX_IMPORT_BYTES = 4 * 1024 * 1024;
@@ -16,8 +21,15 @@ export const GET: RequestHandler = async ({ url }) => {
 	try {
 		const folder = await driveFindFolder(folderName);
 		if (!folder) {
+			const visible = await driveVisibleFolderNames().catch(() => [] as string[]);
+			const onlyOwn = visible.every((name) => name === 'InterMittens');
 			return json(
-				{ message: `Dossier « ${folderName} » introuvable dans votre Drive.` },
+				{
+					message: onlyOwn
+						? `Dossier « ${folderName} » introuvable : l'appli ne voit pas encore vos dossiers. Refaites la liaison sur /setup-google.`
+						: `Dossier « ${folderName} » introuvable. Dossiers visibles : ${visible.join(', ')}.`,
+					visible
+				},
 				{ status: 404 }
 			);
 		}

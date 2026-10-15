@@ -309,11 +309,28 @@ export async function driveFindFolder(name: string) {
 	});
 	const response = await driveFetch(`${API}/files?${params}`);
 	const folders = ((await response.json()) as { files?: DriveFile[] }).files ?? [];
-	const lower = name.toLocaleLowerCase('fr');
+	const normalize = (value: string) =>
+		value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('fr').trim();
+	const wanted = normalize(name);
 	return (
 		folders.find((folder) => folder.name === name) ??
-		folders.find((folder) => folder.name.toLocaleLowerCase('fr') === lower)
+		folders.find((folder) => normalize(folder.name) === wanted) ??
+		folders.find((folder) => normalize(folder.name).startsWith(wanted)) ??
+		folders.find((folder) => normalize(folder.name).includes(wanted))
 	);
+}
+
+/** A few folder names the app can see, to help when a name is not found. */
+export async function driveVisibleFolderNames() {
+	const params = new URLSearchParams({
+		q: `mimeType = '${FOLDER_MIME}' and trashed = false and 'root' in parents`,
+		fields: 'files(name)',
+		spaces: 'drive',
+		pageSize: '30',
+		orderBy: 'name'
+	});
+	const response = await driveFetch(`${API}/files?${params}`);
+	return (((await response.json()) as { files?: DriveFile[] }).files ?? []).map((f) => f.name);
 }
 
 /** Lists importable files of a folder and its subfolders (up to 3 levels). */
