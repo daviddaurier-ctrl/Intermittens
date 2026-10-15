@@ -947,10 +947,19 @@ function analyzeGhsPayroll(text: string) {
  * Audiovisual payslips laid out like FAP / Futur Antérieur Production ("**** BRUT ****" line,
  * "NET SOCIAL", period/cumulative "Brut … Heures …" block at the bottom).
  */
+/** Regex source matching a phrase even when the PDF text has spaces inside words ("n et soci a l"). */
+function looseWords(phrase: string) {
+	return phrase
+		.split(' ')
+		.map((word) => [...word].map((char) => char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s*'))
+		.join('\\s*');
+}
+
 function analyzeAudiovisualPayroll(text: string) {
 	const fields: Partial<ContractFields> = {};
 	const notes: string[] = [];
-	const isAudiovisualPayroll = /\*{4}\s*brut\s*\*{4}/.test(text) && /\bnet social\b/.test(text);
+	const netSocialPattern = new RegExp(`\\b${looseWords('net social')}\\s+${moneyPattern}`, 'i');
+	const isAudiovisualPayroll = /\*{4}\s*brut\s*\*{4}/.test(text) && netSocialPattern.test(text);
 
 	if (!isAudiovisualPayroll) return { fields, notes };
 
@@ -958,7 +967,7 @@ function analyzeAudiovisualPayroll(text: string) {
 		text,
 		new RegExp(String.raw`\*{4}\s*brut\s*\*{4}\s+${moneyPattern}`, 'i')
 	);
-	const netSalary = matchFirstMoney(text, new RegExp(String.raw`\bnet social\s+${moneyPattern}`, 'i'));
+	const netSalary = matchFirstMoney(text, netSocialPattern);
 	// "Impôt sur le revenu prélevé à la source <base> <montant>": the base is the period's taxable net.
 	const taxableNetSalary = matchFirstMoney(
 		text,
@@ -966,7 +975,7 @@ function analyzeAudiovisualPayroll(text: string) {
 	);
 	const contributions = matchFirstMoney(
 		text,
-		new RegExp(String.raw`\btotal des cotisations et contributions\s+${moneyPattern}`, 'i')
+		new RegExp(`\\b${looseWords('total des cotisations et contributions')}\\s+${moneyPattern}`, 'i')
 	);
 	// Bottom block: "Brut <période> <cumul> Heures <période> <cumul>".
 	const hours = toNumber(
@@ -974,9 +983,17 @@ function analyzeAudiovisualPayroll(text: string) {
 			new RegExp(String.raw`\bbrut\s+${moneyPattern}\s+${moneyPattern}\s+heures\s+${numberPattern}`, 'i')
 		)?.[3]
 	);
-	const cachets = toNumber(
-		text.match(new RegExp(String.raw`\bcachets?\s*\((?:isoles?|groupes?)\)\s+${numberPattern}`, 'i'))?.[1]
-	);
+	// One line per period ("117400 CACHETS (Groupés) 5,00 …", "… 2,00 …"): add them up.
+	const cachetValues = [
+		...text.matchAll(
+			new RegExp(String.raw`\bcachets?\s*\((?:isoles?|groupes?)\)\s+${numberPattern}`, 'gi')
+		)
+	]
+		.map((match) => toNumber(match[1]))
+		.filter((value): value is number => value !== undefined);
+	const cachets = cachetValues.length
+		? cachetValues.reduce((total, value) => total + value, 0)
+		: undefined;
 
 	if (grossSalary !== undefined) fields.grossSalary = grossSalary;
 	if (netSalary !== undefined) fields.netSalary = netSalary;
@@ -989,7 +1006,7 @@ function analyzeAudiovisualPayroll(text: string) {
 	}
 
 	if (Object.keys(fields).length) {
-		notes.push('Bulletin audiovisuel analysé (brut, net social, heures ou cachets).');
+		notes.push('Bulletin audiovisuel analysé (brut, net social, heures ou cachets à 12 h).');
 	}
 
 	return { fields, notes };
