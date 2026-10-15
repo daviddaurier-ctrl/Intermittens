@@ -943,6 +943,58 @@ function analyzeGhsPayroll(text: string) {
 	return { fields, notes };
 }
 
+/**
+ * Audiovisual payslips laid out like FAP / Futur Antérieur Production ("**** BRUT ****" line,
+ * "NET SOCIAL", period/cumulative "Brut … Heures …" block at the bottom).
+ */
+function analyzeAudiovisualPayroll(text: string) {
+	const fields: Partial<ContractFields> = {};
+	const notes: string[] = [];
+	const isAudiovisualPayroll = /\*{4}\s*brut\s*\*{4}/.test(text) && /\bnet social\b/.test(text);
+
+	if (!isAudiovisualPayroll) return { fields, notes };
+
+	const grossSalary = matchFirstMoney(
+		text,
+		new RegExp(String.raw`\*{4}\s*brut\s*\*{4}\s+${moneyPattern}`, 'i')
+	);
+	const netSalary = matchFirstMoney(text, new RegExp(String.raw`\bnet social\s+${moneyPattern}`, 'i'));
+	// "Impôt sur le revenu prélevé à la source <base> <montant>": the base is the period's taxable net.
+	const taxableNetSalary = matchFirstMoney(
+		text,
+		new RegExp(String.raw`\bimpot sur le revenu preleve a la source\s+${moneyPattern}`, 'i')
+	);
+	const contributions = matchFirstMoney(
+		text,
+		new RegExp(String.raw`\btotal des cotisations et contributions\s+${moneyPattern}`, 'i')
+	);
+	// Bottom block: "Brut <période> <cumul> Heures <période> <cumul>".
+	const hours = toNumber(
+		text.match(
+			new RegExp(String.raw`\bbrut\s+${moneyPattern}\s+${moneyPattern}\s+heures\s+${numberPattern}`, 'i')
+		)?.[3]
+	);
+	const cachets = toNumber(
+		text.match(new RegExp(String.raw`\bcachets?\s*\((?:isoles?|groupes?)\)\s+${numberPattern}`, 'i'))?.[1]
+	);
+
+	if (grossSalary !== undefined) fields.grossSalary = grossSalary;
+	if (netSalary !== undefined) fields.netSalary = netSalary;
+	if (taxableNetSalary !== undefined) fields.taxableNetSalary = taxableNetSalary;
+	if (contributions !== undefined) fields.contributions = contributions;
+	if (hours !== undefined && hours > 0) fields.hours = hours;
+	if (cachets !== undefined && cachets > 0) {
+		fields.cachets = cachets;
+		if (fields.hours === undefined) fields.hours = cachets * 12;
+	}
+
+	if (Object.keys(fields).length) {
+		notes.push('Bulletin audiovisuel analysé (brut, net social, heures ou cachets).');
+	}
+
+	return { fields, notes };
+}
+
 function preview(text: string) {
 	return text.length > 1200 ? `${text.slice(0, 1200)}...` : text;
 }
@@ -955,6 +1007,7 @@ export function analyzeDocumentText(text: string): DocumentAnalysis {
 	const aemAnalysis = analyzeAem(normalized);
 	const gusoAnalysis = analyzeGusoFields(normalized);
 	const ghsPayrollAnalysis = analyzeGhsPayroll(searchable);
+	const audiovisualPayrollAnalysis = analyzeAudiovisualPayroll(searchable);
 	const movinmotionAnalysis = analyzeMovinmotionContract(normalized);
 	const movinmotionPayrollAnalysis = analyzeMovinmotionPayroll(searchable);
 	const movinmotionCongeSpectacleAnalysis = analyzeMovinmotionCongeSpectacle(searchable);
@@ -1035,6 +1088,8 @@ export function analyzeDocumentText(text: string): DocumentAnalysis {
 	notes.push(...gusoAnalysis.notes);
 	Object.assign(fields, ghsPayrollAnalysis.fields);
 	notes.push(...ghsPayrollAnalysis.notes);
+	Object.assign(fields, audiovisualPayrollAnalysis.fields);
+	notes.push(...audiovisualPayrollAnalysis.notes);
 	Object.assign(fields, movinmotionAnalysis.fields);
 	notes.push(...movinmotionAnalysis.notes);
 	Object.assign(fields, movinmotionPayrollAnalysis.fields);
