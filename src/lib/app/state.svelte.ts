@@ -241,6 +241,10 @@ export function createIntermittensState(initialData: AppData) {
 	let saveState = $state<'idle' | 'saving' | 'saved' | 'error'>('idle');
 	let uploadState = $state<Record<string, string>>({});
 	let contractImportFeedback = $state<ContractImportFeedback | null>(null);
+	let driveImportState = $state<{ running: boolean; message: string }>({
+		running: false,
+		message: ''
+	});
 	let contractImportUndoSnapshot: ContractImportUndoSnapshot | undefined;
 	let companySuggestionState = $state<CompanySuggestion[]>([]);
 	let areUploadState = $state('');
@@ -721,6 +725,82 @@ export function createIntermittensState(initialData: AppData) {
 		const input = event.currentTarget as HTMLInputElement;
 		const files = Array.from(input.files ?? []);
 		if (!files.length) return;
+		await importFiles(files);
+		input.value = '';
+	}
+
+	type DriveFileEntry = { id: string; name: string; mimeType: string; size: number };
+
+	/** Imports the new documents of a Google Drive folder through the normal import pipeline. */
+	async function importFromDrive(folderName: string) {
+		const folder = folderName.trim();
+		if (!folder || driveImportState.running) return;
+
+		driveImportState = { running: true, message: `Recherche du dossier « ${folder} »…` };
+		try {
+			const listResponse = await fetch(
+				`${base}/api/drive-import?folder=${encodeURIComponent(folder)}`
+			);
+			const listing = await readServerPayload<{
+				files?: DriveFileEntry[];
+				tooLarge?: string[];
+				message?: string;
+			}>(listResponse, { message: 'Réponse serveur illisible.' });
+			if (!listResponse.ok || !listing.files) {
+				driveImportState = { running: false, message: listing.message ?? 'Dossier illisible.' };
+				return;
+			}
+
+			const done = new Set(appData.settings.driveImportedFileIds ?? []);
+			const pending = listing.files.filter((file) => !done.has(file.id));
+			const tooLargeNote = listing.tooLarge?.length
+				? ` ${listing.tooLarge.length} fichier(s) trop lourd(s) ignoré(s) (plus de 4 Mo).`
+				: '';
+			if (!pending.length) {
+				driveImportState = {
+					running: false,
+					message: `Aucun nouveau document dans « ${folder} ».${tooLargeNote}`
+				};
+				return;
+			}
+
+			const files: File[] = [];
+			const idsByName = new Map<string, string[]>();
+			for (const [index, entry] of pending.entries()) {
+				driveImportState = {
+					running: true,
+					message: `Récupération ${index + 1}/${pending.length} : ${entry.name}`
+				};
+				const response = await fetch(`${base}/api/drive-import/${encodeURIComponent(entry.id)}`);
+				if (!response.ok) continue;
+				const blob = await response.blob();
+				files.push(new File([blob], entry.name, { type: entry.mimeType || blob.type }));
+				idsByName.set(entry.name, [...(idsByName.get(entry.name) ?? []), entry.id]);
+			}
+
+			driveImportState = { running: true, message: `Analyse de ${files.length} document(s)…` };
+			const result = await importFiles(files);
+
+			const importedIds = result.items
+				.filter((item) => item.status === 'success')
+				.flatMap((item) => idsByName.get(item.fileName) ?? []);
+			appData.settings.driveImportedFileIds = [...new Set([...done, ...importedIds])];
+			touch();
+
+			driveImportState = {
+				running: false,
+				message: `${result.importedCount}/${pending.length} document(s) importé(s) depuis « ${folder} ».${tooLargeNote}`
+			};
+		} catch (cause) {
+			driveImportState = {
+				running: false,
+				message: cause instanceof Error ? cause.message : 'Import Drive impossible.'
+			};
+		}
+	}
+
+	async function importFiles(files: File[]) {
+		if (!files.length) return { importedCount: 0, items: [] as ContractImportFeedbackItem[] };
 
 		const undoSnapshot: ContractImportUndoSnapshot = {
 			data: $state.snapshot(appData),
@@ -878,8 +958,6 @@ export function createIntermittensState(initialData: AppData) {
 			});
 		}
 
-		input.value = '';
-
 		if (lastRoutedContractId) {
 			selectedContractId = lastRoutedContractId;
 			activeTab = 'contrats';
@@ -916,6 +994,8 @@ export function createIntermittensState(initialData: AppData) {
 			items,
 			canUndo: importedCount > 0
 		};
+
+		return { importedCount, items };
 	}
 
 	async function undoContractImport() {
@@ -1176,6 +1256,9 @@ export function createIntermittensState(initialData: AppData) {
 		get contractImportFeedback() {
 			return contractImportFeedback;
 		},
+		get driveImportState() {
+			return driveImportState;
+		},
 		get companySuggestionState() {
 			return companySuggestionState;
 		},
@@ -1266,6 +1349,7 @@ export function createIntermittensState(initialData: AppData) {
 		applyFields,
 		uploadDocument,
 		createContractFromDocument,
+		importFromDrive,
 		undoContractImport,
 		dismissContractImportFeedback,
 		cleanupUnusedFiles,

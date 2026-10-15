@@ -119,7 +119,9 @@ export function createDefaultData(): AppData {
 			remoteBaseUrl: 'https://yoursite.fr/intermittens',
 			remoteSyncEnabled: false,
 			remoteLastSyncAt: '',
-			remoteLastSyncStatus: 'Synchronisation distante non activée'
+			remoteLastSyncStatus: 'Synchronisation distante non activée',
+			driveImportFolder: 'salaire',
+			driveImportedFileIds: []
 		}
 	};
 }
@@ -419,7 +421,11 @@ export function normalizeData(input: Partial<AppData>): AppData {
 			remoteSyncEnabled: Boolean(settings.remoteSyncEnabled),
 			remoteLastSyncAt: cleanString(settings.remoteLastSyncAt),
 			remoteLastSyncStatus:
-				cleanString(settings.remoteLastSyncStatus) || defaults.settings.remoteLastSyncStatus
+				cleanString(settings.remoteLastSyncStatus) || defaults.settings.remoteLastSyncStatus,
+			driveImportFolder: cleanString(settings.driveImportFolder) || 'salaire',
+			driveImportedFileIds: Array.isArray(settings.driveImportedFileIds)
+				? settings.driveImportedFileIds.map(String)
+				: []
 		}
 	};
 }

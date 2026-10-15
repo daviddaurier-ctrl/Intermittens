@@ -267,3 +267,83 @@ export async function exchangeAuthCode(code: string, redirectUri: string) {
 	}
 	return payload.refresh_token;
 }
+
+// ---- Import from the owner's existing folders (drive.readonly) ----
+
+export type DriveImportFile = { id: string; name: string; mimeType: string; size: number };
+
+const IMPORTABLE_MIME = /^(application\/pdf|text\/plain|text\/csv|text\/markdown)$/;
+
+async function listChildren(parentId: string, extraQuery = '') {
+	const files: (DriveFile & { size?: string })[] = [];
+	let pageToken = '';
+
+	do {
+		const params = new URLSearchParams({
+			q: `'${parentId}' in parents and trashed = false${extraQuery}`,
+			fields: 'nextPageToken, files(id,name,mimeType,size)',
+			spaces: 'drive',
+			pageSize: '1000',
+			orderBy: 'name'
+		});
+		if (pageToken) params.set('pageToken', pageToken);
+		const response = await driveFetch(`${API}/files?${params}`);
+		const payload = (await response.json()) as {
+			files?: (DriveFile & { size?: string })[];
+			nextPageToken?: string;
+		};
+		files.push(...(payload.files ?? []));
+		pageToken = payload.nextPageToken ?? '';
+	} while (pageToken);
+
+	return files;
+}
+
+/** Finds a folder anywhere in the owner's Drive by its exact name (case-insensitive fallback). */
+export async function driveFindFolder(name: string) {
+	const params = new URLSearchParams({
+		q: `mimeType = '${FOLDER_MIME}' and trashed = false and name contains '${escapeQuery(name)}'`,
+		fields: 'files(id,name)',
+		spaces: 'drive',
+		pageSize: '50'
+	});
+	const response = await driveFetch(`${API}/files?${params}`);
+	const folders = ((await response.json()) as { files?: DriveFile[] }).files ?? [];
+	const lower = name.toLocaleLowerCase('fr');
+	return (
+		folders.find((folder) => folder.name === name) ??
+		folders.find((folder) => folder.name.toLocaleLowerCase('fr') === lower)
+	);
+}
+
+/** Lists importable files of a folder and its subfolders (up to 3 levels). */
+export async function driveListImportableFiles(folderId: string, depth = 0) {
+	const result: DriveImportFile[] = [];
+	for (const child of await listChildren(folderId)) {
+		if (child.mimeType === FOLDER_MIME) {
+			if (depth < 3) result.push(...(await driveListImportableFiles(child.id, depth + 1)));
+			continue;
+		}
+		if (!child.mimeType || !IMPORTABLE_MIME.test(child.mimeType)) continue;
+		result.push({
+			id: child.id,
+			name: child.name,
+			mimeType: child.mimeType,
+			size: Number(child.size ?? 0)
+		});
+	}
+	return result;
+}
+
+export async function driveDownloadById(id: string) {
+	const metaResponse = await driveFetch(
+		`${API}/files/${encodeURIComponent(id)}?fields=id,name,mimeType,size`
+	);
+	if (metaResponse.status === 404) return undefined;
+	const meta = (await metaResponse.json()) as DriveFile & { size?: string };
+	if (!meta.mimeType || !IMPORTABLE_MIME.test(meta.mimeType)) return undefined;
+
+	const response = await driveFetch(`${API}/files/${encodeURIComponent(id)}?alt=media`);
+	if (response.status === 404) return undefined;
+	return { meta, content: Buffer.from(await response.arrayBuffer()) };
+}

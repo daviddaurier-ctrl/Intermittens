@@ -3,6 +3,7 @@
 	import DateInput from '$lib/components/DateInput.svelte';
 	import DocumentList from '$lib/components/DocumentList.svelte';
 	import DocumentPresence from '$lib/components/DocumentPresence.svelte';
+	import DriveImport from '$lib/components/DriveImport.svelte';
 	import ImportFeedback from '$lib/components/ImportFeedback.svelte';
 	import { formatCurrency, formatDate, formatNumber } from '$lib/format';
 	import type { Contract, IntermittencePeriod } from '$lib/types';
@@ -152,6 +153,7 @@
 				>
 			</div>
 		</div>
+		<DriveImport state={appState} />
 		<ImportFeedback state={appState} />
 		{#if appState.companySuggestionState.length}
 			<div class="suggestion-stack">

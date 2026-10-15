@@ -3,6 +3,7 @@
 	import Calendar from '$lib/components/Calendar.svelte';
 	import DocumentPresence from '$lib/components/DocumentPresence.svelte';
 	import { formatCurrency, formatDate, formatNumber } from '$lib/format';
+	import DriveImport from '$lib/components/DriveImport.svelte';
 	import ImportFeedback from '$lib/components/ImportFeedback.svelte';
 	import { buildMonthlyContractBreakdown, contractRecognizedHours, monthLabel } from '$lib/stats';
 	import type { Contract } from '$lib/types';
@@ -117,6 +118,7 @@
 				>
 			</div>
 		</div>
+		<DriveImport state={appState} />
 		<ImportFeedback state={appState} />
 		<div class="table-wrap">
 			<table>

@@ -183,6 +183,8 @@ export type AppSettings = {
 	remoteSyncEnabled: boolean;
 	remoteLastSyncAt: string;
 	remoteLastSyncStatus: string;
+	driveImportFolder: string;
+	driveImportedFileIds: string[];
 };
 
 export type AppData = {
