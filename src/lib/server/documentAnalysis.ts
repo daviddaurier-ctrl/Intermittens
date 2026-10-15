@@ -107,11 +107,23 @@ function usefulTextLength(text: string) {
 	return text.match(/[\p{L}\p{N}]/gu)?.length ?? 0;
 }
 
+/**
+ * pdfjs runs its "worker" in-process on Node by importing pdf.worker.mjs dynamically, which
+ * serverless bundlers (Vercel) don't trace. Importing it here with a static specifier makes the
+ * bundler ship it, and exposing it on globalThis lets pdfjs use it directly.
+ */
+async function ensurePdfWorker() {
+	const target = globalThis as typeof globalThis & { pdfjsWorker?: unknown };
+	if (target.pdfjsWorker) return;
+	target.pdfjsWorker = await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
+}
+
 export async function extractPdfDocumentText(buffer: Buffer): Promise<PdfTextExtraction> {
 	const formText = await extractPdfFormText(buffer);
 
 	try {
 		const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+		await ensurePdfWorker();
 		const document = await pdfjs.getDocument({
 			data: Uint8Array.from(buffer),
 			disableFontFace: true,
@@ -170,7 +182,8 @@ export async function extractPdfDocumentText(buffer: Buffer): Promise<PdfTextExt
 		} finally {
 			await document.cleanup();
 		}
-	} catch {
+	} catch (cause) {
+		console.error('Lecture PDF (pdfjs) impossible, repli sur le texte brut:', cause);
 		const text = formText || extractPdfTextFromBuffer(buffer);
 		return {
 			pages: text ? [text] : [],
