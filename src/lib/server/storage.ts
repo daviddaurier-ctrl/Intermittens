@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { defaultCompanyColor, normalizeCompanyColor } from '$lib/companyColors';
 import type {
 	AppData,
+	AuthorWork,
 	Company,
 	Contract,
 	ContractFields,
@@ -12,7 +13,11 @@ import type {
 	FutureContractAmountType,
 	IntermittencePeriod,
 	MonthlyInfo,
-	Project
+	Project,
+	RoyaltyPayment,
+	RoyaltySource,
+	RoyaltyStatus,
+	WorkKind
 } from '$lib/types';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -80,6 +85,8 @@ export function createDefaultData(): AppData {
 		periods: [],
 		futureContracts: [],
 		monthlyInfos: [],
+		works: [],
+		royalties: [],
 		settings: {
 			referenceStartDate: `${new Date().getFullYear()}-01-01`,
 			targetHours: 507,
@@ -272,6 +279,45 @@ function normalizeMonthlyInfo(info: Partial<MonthlyInfo>): MonthlyInfo {
 	};
 }
 
+const royaltySources: RoyaltySource[] = ['SACEM', 'SACD', 'Droits directs', 'Autre'];
+const royaltyStatuses: RoyaltyStatus[] = ['Attendu', 'Reçu', 'Déclaré'];
+const workKinds: WorkKind[] = ['Musique', 'Spectacle vivant', 'Audiovisuel', 'Texte', 'Autre'];
+
+function pick<T extends string>(value: unknown, allowed: T[], fallback: T): T {
+	return allowed.includes(value as T) ? (value as T) : fallback;
+}
+
+function normalizeWork(work: Partial<AuthorWork>): AuthorWork {
+	return {
+		id: cleanString(work.id) || createId('work'),
+		title: cleanString(work.title) || 'Nouvelle œuvre',
+		kind: pick(work.kind, workKinds, 'Autre'),
+		society: pick(work.society, royaltySources, 'Autre'),
+		reference: cleanString(work.reference),
+		coAuthors: cleanString(work.coAuthors),
+		sharePercent: normalizeNumber(work.sharePercent ?? 100),
+		depositDate: cleanString(work.depositDate),
+		notes: cleanString(work.notes)
+	};
+}
+
+function normalizeRoyalty(payment: Partial<RoyaltyPayment>): RoyaltyPayment {
+	return {
+		id: cleanString(payment.id) || createId('royalty'),
+		source: pick(payment.source, royaltySources, 'Autre'),
+		payerName: cleanString(payment.payerName),
+		workId: cleanString(payment.workId),
+		label: cleanString(payment.label),
+		paymentDate: cleanString(payment.paymentDate),
+		grossAmount: normalizeNumber(payment.grossAmount),
+		withheldContributions: normalizeNumber(payment.withheldContributions),
+		netAmount: normalizeNumber(payment.netAmount),
+		contributionsWithheld: payment.contributionsWithheld !== false,
+		status: pick(payment.status, royaltyStatuses, 'Reçu'),
+		notes: cleanString(payment.notes)
+	};
+}
+
 export function normalizeData(input: Partial<AppData>): AppData {
 	const defaults = createDefaultData();
 	const settings = { ...defaults.settings, ...(input.settings ?? {}) };
@@ -290,6 +336,8 @@ export function normalizeData(input: Partial<AppData>): AppData {
 		monthlyInfos: Array.isArray(input.monthlyInfos)
 			? input.monthlyInfos.map(normalizeMonthlyInfo).filter((info) => info.month)
 			: [],
+		works: Array.isArray(input.works) ? input.works.map(normalizeWork) : [],
+		royalties: Array.isArray(input.royalties) ? input.royalties.map(normalizeRoyalty) : [],
 		settings: {
 			...settings,
 			targetHours: normalizeNumber(settings.targetHours) || defaults.settings.targetHours,

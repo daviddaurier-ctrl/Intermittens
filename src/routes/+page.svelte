@@ -6,6 +6,7 @@
 	import ContractsView from '$lib/components/views/ContractsView.svelte';
 	import IntermittenceView from '$lib/components/views/IntermittenceView.svelte';
 	import PilotageView from '$lib/components/views/PilotageView.svelte';
+	import RoyaltiesView from '$lib/components/views/RoyaltiesView.svelte';
 	import StatsView from '$lib/components/views/StatsView.svelte';
 	import StructuresView from '$lib/components/views/StructuresView.svelte';
 	import type { AppData } from '$lib/types';
@@ -26,7 +27,9 @@
 </svelte:head>
 
 <AppShell {state}>
-	<MetricsGrid {state} />
+	{#if state.activeTab !== 'droits'}
+		<MetricsGrid {state} />
+	{/if}
 
 	{#if state.activeTab === 'pilotage'}
 		<PilotageView {state} />
@@ -40,5 +43,7 @@
 		<StatsView {state} />
 	{:else if state.activeTab === 'intermittence'}
 		<IntermittenceView {state} />
+	{:else if state.activeTab === 'droits'}
+		<RoyaltiesView {state} />
 	{/if}
 </AppShell>

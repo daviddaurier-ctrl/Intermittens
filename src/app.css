@@ -1634,6 +1634,145 @@ pre {
 	padding-top: 12px;
 }
 
+/* ---- Droits d'auteur ---- */
+
+.royalties-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: end;
+	justify-content: space-between;
+	gap: 10px;
+}
+
+.royalties-table {
+	min-width: 560px;
+}
+
+.royalties-table .num {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+.royalties-table .total-row td {
+	border-top: 1px solid rgba(255, 255, 255, 0.16);
+	font-weight: 700;
+}
+
+.royalties-table .muted-row td {
+	color: #7f8985;
+}
+
+.source-tag {
+	display: inline-block;
+	border-radius: 999px;
+	padding: 2px 8px;
+	background: rgba(255, 255, 255, 0.08);
+	font-size: 12px;
+}
+
+.source-tag[data-source='SACEM'] {
+	background: rgba(124, 158, 255, 0.16);
+	color: #b9caff;
+}
+
+.source-tag[data-source='SACD'] {
+	background: rgba(226, 132, 196, 0.16);
+	color: #f2b8de;
+}
+
+.source-tag[data-source='Droits directs'] {
+	background: rgba(217, 177, 95, 0.16);
+	color: #f4d792;
+}
+
+.status[data-status='Reçu'] {
+	background: rgba(217, 177, 95, 0.16);
+	color: #f4d792;
+}
+
+.status[data-status='Déclaré'] {
+	background: rgba(103, 216, 194, 0.16);
+	color: #9af1df;
+}
+
+.royalty-form {
+	margin-top: 12px;
+}
+
+.checkbox-line {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.checkbox-line input {
+	width: auto;
+	min-height: 0;
+}
+
+.declaration-checklist {
+	display: grid;
+	gap: 10px;
+	margin-top: 12px;
+}
+
+.declaration-checklist .alert {
+	border: 1px solid rgba(217, 177, 95, 0.4);
+	border-radius: 8px;
+	background: rgba(217, 177, 95, 0.1);
+	padding: 10px;
+	color: #f4d792;
+}
+
+.declaration-checklist .hint {
+	color: #aab4af;
+	font-size: 13px;
+}
+
+.declaration-checklist .ok-line {
+	color: #9af1df;
+}
+
+.declaration-checklist a.ghost-button {
+	display: inline-flex;
+	align-items: center;
+	text-decoration: none;
+}
+
+.income-compare {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 10px;
+}
+
+.income-compare > div {
+	display: grid;
+	gap: 2px;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 8px;
+	padding: 10px;
+}
+
+.income-compare span {
+	color: #aab4af;
+	font-size: 12px;
+}
+
+.income-compare strong {
+	font-size: 20px;
+}
+
+.work-total {
+	color: #aab4af;
+	font-size: 13px;
+}
+
+@media (max-width: 760px) {
+	.income-compare {
+		grid-template-columns: 1fr;
+	}
+}
+
 @media (max-width: 1080px) {
 	.metrics-grid,
 	.two-columns,

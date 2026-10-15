@@ -128,6 +128,37 @@ export type IntermittencePeriod = {
 	notes: string;
 };
 
+export type RoyaltySource = 'SACEM' | 'SACD' | 'Droits directs' | 'Autre';
+export type RoyaltyStatus = 'Attendu' | 'Reçu' | 'Déclaré';
+export type WorkKind = 'Musique' | 'Spectacle vivant' | 'Audiovisuel' | 'Texte' | 'Autre';
+
+export type AuthorWork = {
+	id: string;
+	title: string;
+	kind: WorkKind;
+	society: RoyaltySource;
+	reference: string;
+	coAuthors: string;
+	sharePercent: number;
+	depositDate: string;
+	notes: string;
+};
+
+export type RoyaltyPayment = {
+	id: string;
+	source: RoyaltySource;
+	payerName: string;
+	workId: string;
+	label: string;
+	paymentDate: string;
+	grossAmount: number;
+	withheldContributions: number;
+	netAmount: number;
+	contributionsWithheld: boolean;
+	status: RoyaltyStatus;
+	notes: string;
+};
+
 export type AppSettings = {
 	referenceStartDate: string;
 	targetHours: number;
@@ -164,6 +195,8 @@ export type AppData = {
 	periods: IntermittencePeriod[];
 	futureContracts: FutureContract[];
 	monthlyInfos: MonthlyInfo[];
+	works: AuthorWork[];
+	royalties: RoyaltyPayment[];
 	settings: AppSettings;
 };
 

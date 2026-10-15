@@ -26,7 +26,14 @@ import type {
 	Project
 } from '$lib/types';
 
-export type Tab = 'pilotage' | 'calendrier' | 'contrats' | 'structures' | 'stats' | 'intermittence';
+export type Tab =
+	| 'pilotage'
+	| 'calendrier'
+	| 'contrats'
+	| 'structures'
+	| 'stats'
+	| 'intermittence'
+	| 'droits';
 
 export const tabs: { id: Tab; label: string }[] = [
 	{ id: 'pilotage', label: 'Dashboard' },
@@ -34,7 +41,8 @@ export const tabs: { id: Tab; label: string }[] = [
 	{ id: 'contrats', label: 'Contrats' },
 	{ id: 'structures', label: 'Structures' },
 	{ id: 'stats', label: 'Stats' },
-	{ id: 'intermittence', label: 'Intermittence' }
+	{ id: 'intermittence', label: 'Intermittence' },
+	{ id: 'droits', label: "Droits d'auteur" }
 ];
 
 export const statuses: ContractStatus[] = ['Estimation', 'Signé', 'Payé'];
