@@ -786,7 +786,16 @@ export function createIntermittensState(initialData: AppData) {
 				.filter((item) => item.status === 'success')
 				.flatMap((item) => idsByName.get(item.fileName) ?? []);
 			appData.settings.driveImportedFileIds = [...new Set([...done, ...importedIds])];
-			touch();
+			await saveData();
+
+			// Give the stored copies readable names (AAAAMM_Type_employeur_projet.pdf).
+			driveImportState = { running: true, message: 'Renommage des copies dans le Drive…' };
+			const renameResponse = await fetch(`${base}/api/maintenance/rename`, { method: 'POST' });
+			const renamed = await readServerPayload<{ data?: AppData; message?: string }>(
+				renameResponse,
+				{ message: '' }
+			);
+			if (renameResponse.ok && renamed.data) appData = renamed.data;
 
 			driveImportState = {
 				running: false,

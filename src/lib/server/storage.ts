@@ -7,6 +7,7 @@ import {
 	driveEnabled,
 	driveListFiles,
 	driveReadFile,
+	driveRenameFile,
 	driveTrashFile,
 	driveWriteFile,
 	storageRequiresDrive
@@ -481,6 +482,16 @@ function resolveStoredDocumentPath(storedName: string) {
 		throw new Error(`Chemin document invalide: ${storedName}`);
 	}
 	return target;
+}
+
+export async function renameStoredFile(storedName: string, newName: string) {
+	if (useDrive()) return driveRenameFile('documents', storedName, newName);
+	try {
+		await rename(resolveStoredDocumentPath(storedName), resolveStoredDocumentPath(newName));
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 export async function deleteStoredFiles(storedNames: string[]) {

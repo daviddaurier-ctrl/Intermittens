@@ -190,6 +190,20 @@ export async function driveWriteFile(
 	return id;
 }
 
+export async function driveRenameFile(area: 'root' | 'documents', name: string, newName: string) {
+	const id = await fileId(area, name);
+	if (!id) return false;
+
+	await driveFetch(`${API}/files/${id}`, {
+		method: 'PATCH',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify({ name: newName })
+	});
+	fileIdCache.delete(`${area}/${name}`);
+	fileIdCache.set(`${area}/${newName}`, id);
+	return true;
+}
+
 /** Moves a file to the Drive trash (recoverable for 30 days) rather than deleting it outright. */
 export async function driveTrashFile(area: 'root' | 'documents', name: string) {
 	const id = await fileId(area, name);
