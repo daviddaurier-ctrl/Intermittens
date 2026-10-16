@@ -164,7 +164,12 @@ function newWork(title: string, producer: string): AuthorWork {
 export function prettyTitle(title: string) {
 	// Statement labels are in capitals: "MUSIC PROMENADE" → "Music Promenade".
 	if (title !== title.toUpperCase()) return title;
-	return title.toLowerCase().replace(/(^|[\s\-/'(])(\p{L})/gu, (_, sep, letter) => sep + letter.toUpperCase());
+	const small = new Set(['et', 'de', 'du', 'des', 'la', 'le', 'les', 'en', 'au', 'aux', 'pour', 'sur', 'a', 'à']);
+	return title
+		.toLowerCase()
+		.replace(/(^|[\s\-/'(])(\p{L}+)/gu, (_, sep, word: string) =>
+			sep + (sep && small.has(word) ? word : word[0].toUpperCase() + word.slice(1))
+		);
 }
 
 export async function syncWorks(
