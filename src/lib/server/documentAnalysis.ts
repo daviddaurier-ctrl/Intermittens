@@ -325,7 +325,11 @@ function matchNumber(text: string, labels: string[]) {
 function matchPayrollCachets(text: string) {
 	const payrollPatterns = [
 		new RegExp(`${numberPattern}\\s+cachet(?:s|\\(s\\))\\s+isole(?:s|\\(s\\))\\b`, 'i'),
-		new RegExp(`${numberPattern}\\s+cachet(?:s|\\(s\\))\\s+groupe(?:s|\\(s\\))\\b`, 'i')
+		new RegExp(`${numberPattern}\\s+cachet(?:s|\\(s\\))\\s+groupe(?:s|\\(s\\))\\b`, 'i'),
+		// GHS / Culturepay: "1 Cachet de représentation 300,00"
+		new RegExp(`${numberPattern}\\s+cachets?\\s+de\\s+(?:representation|repetition)\\b`, 'i'),
+		// Prodster: "Nombre de jour(s)/cachet(s) travaillé(s) : 1.00"
+		new RegExp(`nombre\\s+de\\s+jour\\(s\\)\\s*\\/\\s*cachet\\(s\\)\\s+travaille\\(s\\)\\s*:\\s*${numberPattern}`, 'i')
 	];
 
 	for (const pattern of payrollPatterns) {
@@ -1040,14 +1044,26 @@ function analyzeAudiovisualPayroll(text: string) {
 	// One line per period ("117400 CACHETS (Groupés) 5,00 …", "… 2,00 …"): add them up.
 	const cachetValues = [
 		...text.matchAll(
-			new RegExp(String.raw`\bcachets?\s*\((?:isoles?|groupes?)\)\s+${numberPattern}`, 'gi')
+			new RegExp(String.raw`\bcachets?\s*\((?:isoles?|groupes?)\)\s+([0-9]{1,3}[,.][0-9]{2})(?!\d)`, 'gi')
 		)
 	]
 		.map((match) => toNumber(match[1]))
 		.filter((value): value is number => value !== undefined);
-	const cachets = cachetValues.length
+	let cachets = cachetValues.length
 		? cachetValues.reduce((total, value) => total + value, 0)
 		: undefined;
+	// The PDF text often scrambles the table: a second "CACHETS (…)" label is not followed by its
+	// count. When labels outnumber the counts read, rebuild the total from gross / unit rate.
+	const cachetLabels = (text.match(/\bcachets?\s*\((?:isoles?|groupes?)\)/gi) ?? []).length;
+	if (cachets !== undefined && cachetLabels > cachetValues.length && grossSalary) {
+		const rate = toNumber(
+			text.match(
+				new RegExp(String.raw`\bcachets?\s*\((?:isoles?|groupes?)\)\s+[0-9]{1,3}[,.][0-9]{2}\s+${moneyPattern}`, 'i')
+			)?.[1]
+		);
+		const rebuilt = rate ? grossSalary / rate : NaN;
+		if (Number.isInteger(rebuilt) && rebuilt > cachets) cachets = rebuilt;
+	}
 
 	if (grossSalary !== undefined) fields.grossSalary = grossSalary;
 	if (netSalary !== undefined) fields.netSalary = netSalary;
