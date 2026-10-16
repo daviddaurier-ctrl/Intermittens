@@ -492,6 +492,12 @@ function matchEmploymentStatus(text: string) {
 			label: 'Technicien'
 		},
 		{ pattern: /\b(?:sonorisateur|eclairagiste|machiniste|regisseuse)\b/i, label: 'Technicien' },
+		{
+			pattern:
+				/\b(?:chef\s+monteur|chef\s+monteuse|monteur|monteuse|chef\s+operateur|cadreur|cadreuse|etalonneur|etalonneuse|mixeur|mixeuse|assistant(?:e)?\s+realisat(?:eur|rice))\b/i,
+			label: 'Technicien'
+		},
+		{ pattern: /\brealisat(?:eur|rice)\b/i, label: 'Artiste' },
 		{ pattern: /\btechnicien\s+video\b/i, label: 'Technicien video' },
 		{ pattern: /\btechnicien\s+son\b/i, label: 'Technicien son' },
 		{ pattern: /\bregisseur\b/i, label: 'Regisseur' },

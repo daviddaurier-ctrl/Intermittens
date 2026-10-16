@@ -272,6 +272,19 @@ function scoreContract(
 	);
 
 	if (employerRelationship === 'different') return -1;
+	// Same project, different job: a director's contract (artist, paid per cachet) and an editor's
+	// contract (technician cadre, paid per day) must stay separate even when the dates overlap.
+	if (projectId && contract.projectId && contract.projectId !== projectId) return -1;
+	const payKind = (cachets?: number, hours?: number, gross?: number) =>
+		(cachets ?? 0) > 0 ? 'cachet' : (hours ?? 0) > 0 && (gross ?? 0) > 0 ? 'jour' : '';
+	const incomingPay = payKind(fields.cachets, fields.hours, fields.grossSalary);
+	const contractPay = payKind(contract.cachets, contract.hours, contract.grossSalary);
+	if (incomingPay && contractPay && incomingPay !== contractPay) return -1;
+	const roleKind = (status?: string) =>
+		/technicien/i.test(status ?? '') ? 'technicien' : /artiste/i.test(status ?? '') ? 'artiste' : '';
+	const incomingRole = roleKind(fields.employmentStatus);
+	const contractRole = roleKind(contract.employmentStatus);
+	if (incomingRole && contractRole && incomingRole !== contractRole) return -1;
 	if (incomingHasPeriod && periods.length > 0 && !exactPeriodMatch && !overlappingPeriodMatch) {
 		return -1;
 	}

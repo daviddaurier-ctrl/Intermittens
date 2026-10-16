@@ -638,11 +638,13 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 
 	let data = await mutateData((current) => {
 		const detectedCompanyId = detectCompanyId(current, combinedText);
-		const matchedProject = findProjectForProduction(
-			current.projects,
-			productionName,
-			detectedCompanyId
-		);
+		const matchedProject =
+			findProjectForProduction(current.projects, productionName, detectedCompanyId) ??
+			findProjectForProduction(
+				current.projects,
+				extractAnalytique([...preparedDocumentTexts.values()].join('\n')),
+				detectedCompanyId
+			);
 		const routedCompanyId = detectedCompanyId || matchedProject?.companyId || '';
 		const knownSirets = new Set(current.companies.map((company) => normalizeDigits(company.siret)));
 		missingCompanySirets = detectedCompanyId
