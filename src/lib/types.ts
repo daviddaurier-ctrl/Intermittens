@@ -142,6 +142,14 @@ export type AuthorWork = {
 	sharePercent: number;
 	depositDate: string;
 	notes: string;
+	/** Producer who pays the rights (from the cession contract or the statements). */
+	producer: string;
+	/** Gross rights promised by the cession contract(s), avenants included (0 = unknown). */
+	promisedAmount: number;
+	/** How the promised amount was found (contract, schedule…). */
+	promisedNotes: string;
+	/** Contract documents already read for this work (so they are not parsed again). */
+	sourceDocumentIds: string[];
 };
 
 export type RoyaltyPayment = {

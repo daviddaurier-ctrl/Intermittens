@@ -810,6 +810,15 @@ export function createIntermittensState(initialData: AppData) {
 			);
 			if (renameResponse.ok && renamed.data) appData = renamed.data;
 
+			// Works (œuvres) from the cession contracts, royalty statements linked to them.
+			driveImportState = { running: true, message: 'Mise à jour des œuvres…' };
+			const worksResponse = await fetch(`${base}/api/maintenance/works`, { method: 'POST' });
+			const works = await readServerPayload<{ data?: AppData; message?: string }>(
+				worksResponse,
+				{ message: '' }
+			);
+			if (worksResponse.ok && works.data) appData = works.data;
+
 			driveImportState = {
 				running: false,
 				message: `${result.importedCount}/${pending.length} document(s) importé(s) depuis « ${folder} ».${tooLargeNote}`

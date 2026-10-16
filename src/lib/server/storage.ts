@@ -372,7 +372,13 @@ function normalizeWork(work: Partial<AuthorWork>): AuthorWork {
 		coAuthors: cleanString(work.coAuthors),
 		sharePercent: normalizeNumber(work.sharePercent ?? 100),
 		depositDate: cleanString(work.depositDate),
-		notes: cleanString(work.notes)
+		notes: cleanString(work.notes),
+		producer: cleanString(work.producer),
+		promisedAmount: normalizeNumber(work.promisedAmount),
+		promisedNotes: cleanString(work.promisedNotes),
+		sourceDocumentIds: Array.isArray(work.sourceDocumentIds)
+			? work.sourceDocumentIds.map(cleanString).filter(Boolean)
+			: []
 	};
 }
 

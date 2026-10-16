@@ -40,6 +40,20 @@
 		selectedWork ? workTotals(appState.appData, selectedWork.id) : undefined
 	);
 
+	/** Promised (cession contract) vs paid (statements received), gross. */
+	function workBalance(work: AuthorWork) {
+		const paid = workTotals(appState.appData, work.id).gross;
+		const promised = work.promisedAmount || 0;
+		const state = !promised ? 'unknown' : paid + 0.5 >= promised ? 'ok' : paid > 0 ? 'partial' : 'missing';
+		return { paid, promised, gap: Math.round((promised - paid) * 100) / 100, state };
+	}
+	const balanceLabel: Record<string, string> = {
+		ok: 'Tout est payé',
+		partial: 'Payé en partie',
+		missing: 'Rien reçu',
+		unknown: 'Montant promis inconnu'
+	};
+
 	function workTitle(workId: string) {
 		return appState.appData.works.find((work) => work.id === workId)?.title ?? '';
 	}
@@ -87,7 +101,11 @@
 			coAuthors: '',
 			sharePercent: 100,
 			depositDate: '',
-			notes: ''
+			notes: '',
+			producer: '',
+			promisedAmount: 0,
+			promisedNotes: '',
+			sourceDocumentIds: []
 		};
 		appState.appData.works.unshift(work);
 		selectedWorkId = work.id;
@@ -393,13 +411,21 @@
 		</div>
 		<div class="list compact">
 			{#each appState.appData.works as work (work.id)}
+				{@const balance = workBalance(work)}
 				<button
 					type="button"
 					class:selected={work.id === selectedWorkId}
 					onclick={() => (selectedWorkId = work.id)}
 				>
-					<strong>{work.title}</strong>
-					<span>{work.kind} · {work.society}{work.reference ? ` · ${work.reference}` : ''}</span>
+					<strong class="work-line">
+						<span class="balance-dot" data-state={balance.state} title={balanceLabel[balance.state]}></span>
+						{work.title}
+					</strong>
+					<span
+						>{work.producer || work.society}{balance.promised
+							? ` · reçu ${formatCurrency(balance.paid)} / promis ${formatCurrency(balance.promised)}`
+							: ` · reçu ${formatCurrency(balance.paid)}`}</span
+					>
 				</button>
 			{/each}
 			{#if appState.appData.works.length === 0}
@@ -410,6 +436,7 @@
 
 	<section class="panel">
 		{#if selectedWork}
+			{@const balance = workBalance(selectedWork)}
 			<div class="panel-heading">
 				<h3>{selectedWork.title}</h3>
 				{#if selectedWorkTotals}
@@ -418,10 +445,29 @@
 					>
 				{/if}
 			</div>
+			<div class="work-balance" data-state={balance.state}>
+				<div><span>Promis au contrat</span><strong>{balance.promised ? formatPreciseCurrency(balance.promised) : '—'}</strong></div>
+				<div><span>Reçu (décomptes)</span><strong>{formatPreciseCurrency(balance.paid)}</strong></div>
+				<div>
+					<span>{balance.gap > 0 ? 'Reste dû' : balance.gap < 0 ? 'Reçu en plus' : 'Écart'}</span>
+					<strong>{balance.promised ? formatPreciseCurrency(Math.abs(balance.gap)) : '—'}</strong>
+				</div>
+			</div>
+			{#if selectedWork.promisedNotes}
+				<p class="hint">Montant promis lu dans : {selectedWork.promisedNotes}</p>
+			{/if}
 			<div class="form-grid tight">
 				<label class="wide">
 					<span>Titre</span>
 					<input bind:value={selectedWork.title} />
+				</label>
+				<label>
+					<span>Producteur</span>
+					<input bind:value={selectedWork.producer} />
+				</label>
+				<label>
+					<span>Droits promis au contrat (brut)</span>
+					<input type="number" min="0" step="0.01" bind:value={selectedWork.promisedAmount} />
 				</label>
 				<label>
 					<span>Type</span>
@@ -469,3 +515,17 @@
 		{/if}
 	</section>
 </section>
+
+<style>
+	.work-line { display: inline-flex; align-items: center; gap: 6px; }
+	.balance-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; background: #c9b3c0; }
+	.balance-dot[data-state='ok'] { background: #2fb36b; }
+	.balance-dot[data-state='partial'] { background: #f59e0b; }
+	.balance-dot[data-state='missing'] { background: #e5383b; }
+	.work-balance { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+	.work-balance > div { display: grid; gap: 2px; padding: 8px 10px; border-radius: 10px; background: rgba(255, 61, 139, 0.07); }
+	.work-balance span { font-size: 0.78rem; opacity: 0.75; }
+	.work-balance[data-state='missing'] > div:last-child { background: rgba(229, 56, 59, 0.12); }
+	.work-balance[data-state='partial'] > div:last-child { background: rgba(245, 158, 11, 0.14); }
+	.work-balance[data-state='ok'] > div:last-child { background: rgba(47, 179, 107, 0.12); }
+</style>
