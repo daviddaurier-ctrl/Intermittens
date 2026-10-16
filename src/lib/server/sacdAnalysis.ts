@@ -67,7 +67,17 @@ export function parseSacdLines(text: string, knownTitles: string[] = []): Royalt
 	);
 	const lines: RoyaltyLine[] = [];
 	for (const match of table.matchAll(row)) {
-		const [, leadingTitle, count, share, , middle, amount, fee, duration, a, b] = match;
+		const [, rawLeading, count, share, , rawMiddle, amount, fee, duration, a, b] = match;
+		// Column codes printed before the title: BA (bande-annonce) / EXT (extrait),
+		// CPLT (complément) / SOLDE. They are flags, not part of the title.
+		const flags: string[] = [];
+		const stripFlags = (value: string) =>
+			value.replace(/^(?:(BA|EXT|CPLT|SOLDE)\s+|(BA|EXT|CPLT|SOLDE)$)+/g, (token) => {
+				flags.push(token.trim());
+				return '';
+			}).trim();
+		const leadingTitle = stripFlags(rawLeading ?? '') || undefined;
+		const middle = stripFlags(rawMiddle);
 		const period = middle.match(new RegExp(DATE))?.[0]?.replace(/\s+/g, '') ?? '';
 		const [before, after] = period ? middle.split(middle.match(new RegExp(DATE))![0]).map((part) => part.trim()) : ['', middle];
 		let broadcaster = '';
@@ -96,10 +106,47 @@ export function parseSacdLines(text: string, knownTitles: string[] = []): Royalt
 			country,
 			amount: toAmount(amount),
 			societyFee: toAmount(fee),
-			sharePercent: toAmount(share)
+			sharePercent: toAmount(share),
+			flags: [...new Set(flags)].join(' ')
 		});
 	}
+	// Rows whose channel and title could not be told apart: use the titles read elsewhere.
+	const titles = [...new Set(lines.filter((line) => line.broadcaster).map((line) => line.title))];
+	for (const line of lines) repairSacdLine(line, [...titles, ...knownTitles]);
 	return lines;
+}
+
+/** Fixes a line whose title is glued to the channel ("FRANCE 3 LES ENFANTS TERRIBLES"). */
+export function repairSacdLine(line: RoyaltyLine, knownTitles: string[]) {
+	const flagOnly = /^(?:(?:BA|EXT|CPLT|SOLDE)\s*)+$/;
+	if (flagOnly.test(line.title)) {
+		line.flags = [...new Set([...(line.flags ? line.flags.split(' ') : []), ...line.title.split(/\s+/)])].join(' ');
+		line.title = '';
+		line.workId = '';
+	}
+	const glued = line.title ? '' : line.broadcaster;
+	const candidate = glued || (!line.broadcaster ? line.title : '');
+	if (!candidate) return false;
+	const upper = flatten(candidate).toUpperCase();
+	const sorted = [...new Set(knownTitles.filter(Boolean))].sort((x, y) => y.length - x.length);
+	for (const title of sorted) {
+		const t = flatten(title).toUpperCase();
+		if (upper === t) continue;
+		if (upper.endsWith(` ${t}`)) {
+			line.broadcaster = candidate.slice(0, candidate.length - t.length).trim();
+			line.title = candidate.slice(-t.length).trim();
+			line.workId = '';
+			return true;
+		}
+	}
+	const split = splitChannelAndTitle(candidate, []);
+	if (split.broadcaster) {
+		line.broadcaster = split.broadcaster;
+		line.title = split.title;
+		line.workId = '';
+		return true;
+	}
+	return false;
 }
 
 export const SACD_MODES: Record<string, string> = {

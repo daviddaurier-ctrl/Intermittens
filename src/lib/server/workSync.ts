@@ -1,3 +1,4 @@
+import { repairSacdLine } from '$lib/server/sacdAnalysis';
 import type { AppData, AuthorWork, ContractDocument } from '$lib/types';
 
 /**
@@ -220,6 +221,25 @@ export async function syncWorks(
 	}
 
 	// 2. Society statements (SACD…) list one line per broadcast: link each line to its work.
+	// First repair lines read before the parser knew the column codes (BA, CPLT…).
+	const flagOnly = /^(?:(?:BA|EXT|CPLT|SOLDE)\s*)+$/i;
+	const knownTitles = [
+		...data.royalties.flatMap((payment) => (payment.lines ?? []).map((line) => line.title)),
+		...data.works.map((work) => work.title)
+	].filter((title) => title && !flagOnly.test(title));
+	for (const payment of data.royalties) {
+		for (const line of payment.lines ?? []) {
+			if (repairSacdLine(line, knownTitles)) changed += 1;
+		}
+		if (payment.lines?.length && payment.workId) {
+			const ids = new Set(payment.lines.map((line) => line.workId));
+			if (ids.size !== 1 || !ids.has(payment.workId)) payment.workId = '';
+		}
+	}
+	const before = data.works.length;
+	data.works = data.works.filter((work) => !flagOnly.test(work.title));
+	changed += before - data.works.length;
+
 	for (const payment of data.royalties) {
 		if (!payment.lines?.length) continue;
 		for (const line of payment.lines) {

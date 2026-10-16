@@ -418,7 +418,8 @@ function normalizeRoyalty(payment: Partial<RoyaltyPayment>): RoyaltyPayment {
 					country: cleanString(line?.country),
 					amount: normalizeNumber(line?.amount),
 					societyFee: normalizeNumber(line?.societyFee),
-					sharePercent: normalizeNumber(line?.sharePercent)
+					sharePercent: normalizeNumber(line?.sharePercent),
+					flags: cleanString(line?.flags)
 				}))
 			: []
 	};

@@ -67,6 +67,12 @@
 		VAD: 'VOD',
 		SVOD: 'VOD abonnement'
 	};
+	const flagLabels: Record<string, string> = {
+		BA: 'bande-annonce',
+		EXT: 'extrait',
+		CPLT: 'complément',
+		SOLDE: 'solde'
+	};
 	function workBroadcasts(workId: string) {
 		return appState.appData.royalties
 			.flatMap((payment) =>
@@ -550,7 +556,14 @@
 										<tr>
 											<td>{line.period}</td>
 											<td>{line.broadcaster || '—'}{line.country && line.country !== 'FR' ? ` (${line.country})` : ''}</td>
-											<td>{modeLabels[line.mode] ?? line.mode}</td>
+											<td
+												>{modeLabels[line.mode] ?? line.mode}{line.flags
+													? ` · ${line.flags
+															.split(' ')
+															.map((flag) => flagLabels[flag] ?? flag)
+															.join(', ')}`
+													: ''}</td
+											>
 											<td class="num">{line.count ? formatNumber(line.count, 0) : ''}</td>
 											<td class="num">{formatPreciseCurrency(line.amount)}</td>
 											<td>{formatDate(line.paymentDate)} · {line.source}</td>
