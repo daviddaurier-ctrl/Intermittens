@@ -85,7 +85,8 @@ export function documentKindFromFileName(fileName: string, fallback: DocumentKin
 	) {
 		return 'Notification ARE';
 	}
-	if (tokens.includes('contrat')) return 'Contrat';
+	if (tokens.includes('contrat') || tokens.includes('avenant') || tokens.includes('signed') || tokens.includes('docusign'))
+		return 'Contrat';
 
 	return fallback;
 }

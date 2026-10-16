@@ -228,7 +228,7 @@ export function classifyDocumentKind(text: string, fallback: DocumentKind) {
 	}
 
 	if (
-		/contrat de travail|contrat d engagement|cdd d usage|engagement d artiste|conditions d engagement/.test(
+		/contrat de travail|contrat d engagement|cdd d usage|engagement d artiste|conditions d engagement|contrat de cession de droits|contrat de production|contrat de realisation|avenant n.?\s?\d/.test(
 			normalized
 		)
 	) {
@@ -741,7 +741,7 @@ function matchContractGrossSalary(text: string) {
 function matchContractTitle(text: string) {
 	const searchable = normalizeDateText(text);
 	if (
-		!/contrat de travail|contrat d engagement|cdd d usage|engagement d artiste|conditions d engagement/.test(
+		!/contrat de travail|contrat d engagement|cdd d usage|engagement d artiste|conditions d engagement|contrat de cession de droits|contrat de production|contrat de realisation|avenant n.?\s?\d/.test(
 			searchable
 		)
 	) {
