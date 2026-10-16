@@ -443,3 +443,30 @@ export async function driveDownloadById(id: string) {
 	if (response.status === 404) return undefined;
 	return { meta, content: Buffer.from(await response.arrayBuffer()) };
 }
+
+/** Files changed recently anywhere in the owner's Drive (to find a document dropped elsewhere). */
+export async function driveRecentFiles(sinceIso: string) {
+	const params = new URLSearchParams({
+		q: `modifiedTime > '${sinceIso}' and trashed = false and mimeType != '${FOLDER_MIME}'`,
+		fields: 'files(id,name,mimeType,size,modifiedTime,parents)',
+		spaces: 'drive',
+		orderBy: 'modifiedTime desc',
+		pageSize: '30'
+	});
+	const response = await driveFetch(`${API}/files?${params}`);
+	const files = ((await response.json()) as { files?: (DriveFile & { size?: string; modifiedTime?: string; parents?: string[] })[] }).files ?? [];
+
+	const parentNames = new Map<string, string>();
+	for (const parent of new Set(files.flatMap((file) => file.parents ?? []))) {
+		const meta = await driveFetch(`${API}/files/${parent}?fields=name`);
+		parentNames.set(parent, meta.ok ? (((await meta.json()) as { name?: string }).name ?? '') : '');
+	}
+	return files.map((file) => ({
+		id: file.id,
+		name: file.name,
+		mimeType: file.mimeType ?? '',
+		size: Number(file.size ?? 0),
+		modifiedTime: file.modifiedTime ?? '',
+		folder: (file.parents ?? []).map((id) => parentNames.get(id) || '').join(', ')
+	}));
+}
