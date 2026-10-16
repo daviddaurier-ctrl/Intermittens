@@ -81,11 +81,14 @@ export function parseCessionContract(text: string): ParsedCession | undefined {
 	const lower = flat.toLowerCase();
 	const isAvenant = /\bavenant n\s*\S*\s*\d/.test(lower);
 
-	const title =
-		flat.match(/titre provisoire\s*:\s*[«"“]\s*(.+?)\s*[»"”]/i)?.[1] ??
-		flat.match(/titre\s*:\s*[«"“]\s*(.+?)\s*[»"”]/i)?.[1] ??
-		flat.match(/film intitule\s*[«"“]\s*(.+?)\s*[»"”]/i)?.[1] ??
+	// Title from the original text, to keep its accents.
+	const plain = text.replace(/\s+/g, ' ');
+	const rawTitle =
+		plain.match(/titre provisoire\s*:\s*[«"“]\s*(.+?)\s*[»"”]/i)?.[1] ??
+		plain.match(/titre\s*:\s*[«"“]\s*(.+?)\s*[»"”]/i)?.[1] ??
+		plain.match(/film intitul[ée]\s*[«"“]\s*(.+?)\s*[»"”]/i)?.[1] ??
 		'';
+	const title = prettyTitle(rawTitle.replace(/\s*[!?.]+$/, '').trim());
 
 	let promised: number | undefined;
 	let how = '';
@@ -158,7 +161,7 @@ function newWork(title: string, producer: string): AuthorWork {
 	};
 }
 
-function prettyTitle(title: string) {
+export function prettyTitle(title: string) {
 	// Statement labels are in capitals: "MUSIC PROMENADE" → "Music Promenade".
 	if (title !== title.toUpperCase()) return title;
 	return title.toLowerCase().replace(/(^|[\s\-/'(])(\p{L})/gu, (_, sep, letter) => sep + letter.toUpperCase());
