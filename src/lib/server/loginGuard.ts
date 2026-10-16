@@ -128,3 +128,20 @@ export async function recordSuccess(address: string) {
 	delete state.addresses[key];
 	await save(state);
 }
+
+/** Summary for the owner (counts only, addresses stay hashed). */
+export async function guardStatus() {
+	const now = Date.now();
+	const state = await load();
+	const locked = Object.values(state.addresses).filter((item) => item.lockedUntil > now).length;
+	return {
+		addressesWithFailures: Object.keys(state.addresses).length,
+		lockedAddresses: locked,
+		globalFailuresThisHour: now - state.global.windowStart > HOUR ? 0 : state.global.fails,
+		globalLockedUntil: state.global.lockedUntil > now ? new Date(state.global.lockedUntil).toISOString() : ''
+	};
+}
+
+export async function resetGuard() {
+	await save(emptyState());
+}
