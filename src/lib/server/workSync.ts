@@ -247,10 +247,12 @@ export async function syncWorks(
 			if (!line.title) continue;
 			let work = findWork(line.title);
 			if (!work) {
-				work = newWork(prettyTitle(line.title), '');
+				work = newWork(prettyTitle(line.title), line.producer ?? '');
 				work.society = payment.source;
+				if (line.mode === 'SCENE') work.kind = 'Spectacle vivant';
 				data.works.unshift(work);
 			}
+			if (!work.producer && line.producer) work.producer = line.producer;
 			line.workId = work.id;
 			changed += 1;
 		}

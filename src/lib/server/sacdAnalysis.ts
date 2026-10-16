@@ -59,7 +59,7 @@ function splitChannelAndTitle(text: string, knownTitles: string[]) {
 
 export function parseSacdLines(text: string, knownTitles: string[] = []): RoyaltyLine[] {
 	const flat = flatten(text);
-	const table = flat.match(/\bpays\b(.*?)total droits bruts/i)?.[1] ?? '';
+	const table = flat.match(/\bpays\b(.*?)total droits bruts audiovisuel/i)?.[1] ?? '';
 	const DATE = String.raw`\d{2}\/\d{2}\/\d{4}(?:\s*-\s*\d{2}\/\d{2}\/\d{4})?`;
 	const row = new RegExp(
 		String.raw`(?:(\S.*?)\s+)??(\d+)\s+(\d{1,3},\d{2})\s+(\d{1,3},\d{2})%\s+(.+?)\s+${NUM}\s+${NUM}\s+Real\.\s+(?:(\d+:\d{2}:\d{2})\s+)?([A-Z_]{2,})\s+([A-Z_]{2,})`,
@@ -107,7 +107,8 @@ export function parseSacdLines(text: string, knownTitles: string[] = []): Royalt
 			amount: toAmount(amount),
 			societyFee: toAmount(fee),
 			sharePercent: toAmount(share),
-			flags: [...new Set(flags)].join(' ')
+			flags: [...new Set(flags)].join(' '),
+			producer: ''
 		});
 	}
 	// Rows whose channel and title could not be told apart: use the titles read elsewhere.
@@ -149,6 +150,50 @@ export function repairSacdLine(line: RoyaltyLine, knownTitles: string[]) {
 	return false;
 }
 
+/**
+ * "Spectacle vivant" table: a header per show ("TITLE - Prod. PRODUCER - Professionnel - Dossier N")
+ * then one row per type of rights: "TITLE 100,00 <nb> <dates> CESSION 100,00 30 min Musique
+ * 58,45 7,55 [prix de cession] VENUE".
+ */
+export function parseSacdStageLines(text: string): RoyaltyLine[] {
+	const flat = flatten(text);
+	const table = flat.match(/spectacle vivant(.*?)total droits bruts spectacle vivant/i)?.[1] ?? '';
+	if (!table) return [];
+	// The show title is the start of the first row after its header.
+	const headers = [
+		...table.matchAll(
+			/-\s+Prod\.\s+(.+?)\s+-\s+[A-Za-z]+\s+-\s+Dossier\s+\d+\s+(.+?)\s+\d{1,3},\d{2}\s+\d+\s+\d{2}\/\d{2}\/\d{4}/g
+		)
+	];
+	const shows = headers.map((match) => ({ title: match[2].trim(), producer: match[1].trim() }));
+	if (!shows.length) return [];
+	const names = shows.map((show) => escape(show.title)).join('|');
+	const DATE = String.raw`\d{2}\/\d{2}\/\d{4}(?:-\d{2}\/\d{2}\/\d{4})?`;
+	const row = new RegExp(
+		String.raw`(${names})\s+(\d{1,3},\d{2})\s+(\d+)\s+(${DATE})\s+([A-Z]+)\s+\d{1,3},\d{2}\s+(\d+\s*min)\s+(\S+)\s+${NUM}\s+${NUM}(?:\s+${NUM})?\s+(.+?)(?=\s+(?:${names})\s+(?:\d|-\s+Prod)|$)`,
+		'g'
+	);
+	return [...table.matchAll(row)].map((match) => {
+		const [, title, share, count, period, , duration, rightsType, amount, fee, , venue] = match;
+		const show = shows.find((item) => item.title === title);
+		return {
+			title,
+			workId: '',
+			broadcaster: venue.trim(),
+			period,
+			count: Number(count) || 0,
+			duration: duration.replace(/\s+/g, ' '),
+			mode: 'SCENE',
+			country: 'FR',
+			amount: toAmount(amount),
+			societyFee: toAmount(fee),
+			sharePercent: toAmount(share),
+			flags: rightsType,
+			producer: show?.producer ?? ''
+		};
+	});
+}
+
 export const SACD_MODES: Record<string, string> = {
 	DIFF: 'Diffusion TV',
 	COPIE_PR: 'Copie privée',
@@ -165,23 +210,63 @@ export function analyzeSacdStatement(
 	if (!isSacdStatement(text)) return undefined;
 	const flat = flatten(text);
 
-	const settlement = flat.match(/(\d{4})\/(\d{2})\/(\d{2})\s*-\s*Virement/i);
-	const paymentDate = settlement ? `${settlement[1]}-${settlement[2]}-${settlement[3]}` : '';
-	// The social contributions base is the gross author income of the statement.
-	const grossAmount = toAmount(flat.match(new RegExp(String.raw`assurance vieillesse plafonnee\s+100\s*%\s+${NUM}`, 'i'))?.[1]);
-	const netSocial = toAmount(flat.match(new RegExp(String.raw`montant net social\s+${NUM}`, 'i'))?.[1]);
-	const netAmount = toAmount(flat.match(new RegExp(String.raw`montants nets\s+${NUM}`, 'i'))?.[1]);
-	const taxable = toAmount(flat.match(new RegExp(String.raw`montants imposables\s+net\s*:\s*${NUM}`, 'i'))?.[1]);
-	const paid = toAmount(flat.match(new RegExp(String.raw`nos reglements\s+${NUM}`, 'i'))?.[1]);
+	const tagDate = flat.match(/<DOC>PAY<\/DOC><DATE>(\d{4})(\d{2})(\d{2})<\/DATE>/i);
+	const settlement = flat.match(/(\d{4})\/(\d{2})\/(\d{2})\s*-\s*Virement/i) ?? tagDate;
+	const editedOn = flat.match(/(\d{2})\/(\d{2})\/(\d{4})\s*-\s*DAURIER|(\d{2})\/(\d{2})\/(\d{4})\s*-\s*[A-Z]/);
+	const paymentDate = settlement
+		? `${settlement[1]}-${settlement[2]}-${settlement[3]}`
+		: editedOn
+			? `${editedOn[3] ?? editedOn[6]}-${editedOn[2] ?? editedOn[5]}-${editedOn[1] ?? editedOn[4]}`
+			: '';
+	// Gross author income of the statement = base of the social contributions.
+	const firstAmountAfter = (pattern: RegExp) => {
+		const index = flat.search(pattern);
+		if (index < 0) return 0;
+		const after = flat
+			.slice(index)
+			.replace(pattern, '')
+			.slice(0, 160)
+			// "Répartition - 2024/12", "CFC 2021": dates and years are not amounts.
+			.replace(/\d{4}\/\d{2}(?:\/\d{2})?/g, ' ')
+			.replace(/\b(?:19|20)\d{2}\b/g, ' ');
+		return toAmount(after.match(new RegExp(NUM))?.[1]);
+	};
+	const grossAmount =
+		firstAmountAfter(/montants bruts avant prelevements/i) ||
+		firstAmountAfter(/montants avant decompte des cotisations sociales et fiscales/i) ||
+		toAmount(flat.match(new RegExp(String.raw`assurance vieillesse plafonnee\s+100\s*%\s+${NUM}`, 'i'))?.[1]);
+	const netSocialLabel = toAmount(flat.match(new RegExp(String.raw`montant net social\s+${NUM}`, 'i'))?.[1]);
+	// Older layout: "… -14,74 46,63 Cotisations sociales prises en charge" (total withheld, net).
+	const beforeState = flat.split(/cotisations sociales prises en charge/i)[0].slice(-60);
+	const negative = toAmount(beforeState.match(/-(\d{1,3}(?:\s\d{3})*,\d{2})(?!.*-\d)/)?.[1]);
+	const withheld = netSocialLabel && grossAmount
+		? Math.round((grossAmount - netSocialLabel) * 100) / 100
+		: negative;
+	const netAmount =
+		toAmount(flat.match(new RegExp(String.raw`montants nets\s+${NUM}`, 'i'))?.[1]) ||
+		toAmount(flat.match(new RegExp(String.raw`montants nets payes.{0,120}?droits\s+${NUM}`, 'i'))?.[1]) ||
+		Math.max(0, Math.round((grossAmount - withheld) * 100) / 100);
+	const taxable = toAmount(
+		flat.match(new RegExp(String.raw`(?:montants|droits) imposables\s+(?:droits\s+)?net\s*:\s*${NUM}`, 'i'))?.[1]
+	);
+	const paidText =
+		flat.match(/<DOC>PAY<\/DOC><DATE>\d{8}<\/DATE><AMOUNT>([\d\s]+,\d{2})<\/AMOUNT>/i)?.[1] ??
+		flat.match(new RegExp(String.raw`nos reglements\s+${NUM}`, 'i'))?.[1];
+	const paid = paidText === undefined ? undefined : toAmount(paidText);
 	const membership = flat.match(new RegExp(String.raw`cotisation sacd (\d{4})`, 'i'));
-	const withheld = grossAmount && netSocial ? Math.round((grossAmount - netSocial) * 100) / 100 : 0;
+	const special = flat.match(
+		/(remboursement de retenue statutaire\s*\d{4}|droits de reprographie\s*\S*\s*\d{4}|copie privee[^0-9]{0,40}\d{4})/i
+	)?.[1];
 
 	const month = text.replace(/\s+/g, ' ').match(/bordereau\s*:\s*(\S+\s+\d{4})/i)?.[1];
-	const refund = /remboursement de retenue statutaire\s*(\d{4})?/i.exec(flat);
-	const lines = parseSacdLines(text, knownTitles);
+	const lines = [...parseSacdLines(text, knownTitles), ...parseSacdStageLines(text)];
 	const titles = [...new Set(lines.map((line) => line.title))];
 	const label = [
-		month ? `Bordereau ${month}` : refund ? `Remboursement de retenue statutaire${refund[1] ? ` ${refund[1]}` : ''}` : 'Relevé SACD',
+		month
+			? `Bordereau ${month}`
+			: special
+				? special.charAt(0).toUpperCase() + special.slice(1)
+				: 'Relevé SACD',
 		titles.join(', ')
 	]
 		.filter(Boolean)
@@ -189,7 +274,7 @@ export function analyzeSacdStatement(
 
 	const notes = [
 		taxable ? `Net imposable : ${taxable.toFixed(2).replace('.', ',')} €` : '',
-		paid && netAmount && paid < netAmount - 0.01
+		paid !== undefined && netAmount && paid < netAmount - 0.01
 			? `Virement de ${paid.toFixed(2).replace('.', ',')} € après cotisation SACD${membership ? ` ${membership[1]}` : ''} (${(netAmount - paid).toFixed(2).replace('.', ',')} €)`
 			: '',
 		`Importé depuis ${fileName}`

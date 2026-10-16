@@ -169,8 +169,10 @@ export type RoyaltyLine = {
 	amount: number;
 	societyFee: number;
 	sharePercent: number;
-	/** Column codes: BA (bande-annonce), EXT (extrait), CPLT (complément), SOLDE. */
+	/** Column codes: BA (bande-annonce), EXT (extrait), CPLT (complément), SOLDE; type of rights on stage. */
 	flags: string;
+	/** Producer of the show (stage performances). */
+	producer: string;
 };
 
 export type RoyaltyPayment = {
