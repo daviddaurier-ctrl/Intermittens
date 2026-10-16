@@ -1,3 +1,4 @@
+import { royaltyFamily } from '$lib/royalties';
 import type { AppData, TaxYearSettings } from '$lib/types';
 
 /**
@@ -43,6 +44,9 @@ export type TaxYearSummary = {
 	royaltiesWithheld: number;
 	royaltiesNet: number;
 	royaltiesTaxable: number;
+	/** Split of royaltiesTaxable: producers (cession contracts) vs societies (SACD, SACEM, SCAM). */
+	royaltiesTaxableDirect: number;
+	royaltiesTaxableSocieties: number;
 	royaltiesWithoutTaxable: number;
 	totalTaxable: number;
 	flatDeduction: number;
@@ -122,6 +126,8 @@ export function buildTaxYear(data: AppData, year: string, settings: TaxYearSetti
 	let royaltiesWithheld = 0;
 	let royaltiesNet = 0;
 	let royaltiesWithoutTaxable = 0;
+	let royaltiesTaxableDirect = 0;
+	let royaltiesTaxableSocieties = 0;
 	for (const payment of data.royalties) {
 		if (payment.status === 'Attendu' || !payment.paymentDate.startsWith(year)) continue;
 		const month = monthOf(payment.paymentDate);
@@ -132,6 +138,8 @@ export function buildTaxYear(data: AppData, year: string, settings: TaxYearSetti
 		royaltiesWithheld += payment.withheldContributions;
 		royaltiesNet += net;
 		if (month) month.royaltiesTaxable += taxable;
+		if (royaltyFamily(payment.source) === 'diffusion') royaltiesTaxableSocieties += taxable;
+		else royaltiesTaxableDirect += taxable;
 	}
 
 	for (const month of months) {
@@ -194,6 +202,8 @@ export function buildTaxYear(data: AppData, year: string, settings: TaxYearSetti
 		royaltiesWithheld: round2(royaltiesWithheld),
 		royaltiesNet: round2(royaltiesNet),
 		royaltiesTaxable,
+		royaltiesTaxableDirect: round2(royaltiesTaxableDirect),
+		royaltiesTaxableSocieties: round2(royaltiesTaxableSocieties),
 		royaltiesWithoutTaxable,
 		totalTaxable,
 		flatDeduction,
@@ -224,7 +234,8 @@ export function taxYearCsv(summary: TaxYearSummary) {
 		['Salaires net imposable', money(summary.salaryTaxable)],
 		['Allocations chômage imposables', money(summary.unemployment)],
 		['Congés Spectacles imposables', money(summary.congesSpectacles)],
-		["Droits d'auteur net imposable", money(summary.royaltiesTaxable)],
+		["Droits d'auteur (producteurs) net imposable", money(summary.royaltiesTaxableDirect)],
+		['Droits de diffusion (SACD, SACEM, SCAM) net imposable', money(summary.royaltiesTaxableSocieties)],
 		['Total imposable avant déduction', money(summary.totalTaxable)],
 		['Déduction forfaitaire 10 %', money(summary.flatDeduction)],
 		['Frais réels', money(summary.actualExpenses)],

@@ -354,7 +354,7 @@ function normalizeMonthlyInfo(info: Partial<MonthlyInfo>): MonthlyInfo {
 	};
 }
 
-const royaltySources: RoyaltySource[] = ['SACEM', 'SACD', 'Droits directs', 'Autre'];
+const royaltySources: RoyaltySource[] = ['SACEM', 'SACD', 'SCAM', 'Droits directs', 'Autre'];
 const royaltyStatuses: RoyaltyStatus[] = ['Attendu', 'Reçu', 'Déclaré'];
 const workKinds: WorkKind[] = ['Musique', 'Spectacle vivant', 'Audiovisuel', 'Texte', 'Autre'];
 

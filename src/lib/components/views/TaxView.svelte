@@ -113,8 +113,12 @@
 						<td class="num">{formatPreciseCurrency(summary.congesSpectacles)}</td>
 					</tr>
 					<tr>
-						<td>Droits d'auteur (net imposable des décomptes)</td>
-						<td class="num">{formatPreciseCurrency(summary.royaltiesTaxable)}</td>
+						<td>Droits d'auteur versés par les producteurs</td>
+						<td class="num">{formatPreciseCurrency(summary.royaltiesTaxableDirect)}</td>
+					</tr>
+					<tr>
+						<td>Droits de diffusion (SACD, SACEM, SCAM)</td>
+						<td class="num">{formatPreciseCurrency(summary.royaltiesTaxableSocieties)}</td>
 					</tr>
 					<tr class="total-row">
 						<td>Total imposable</td>
@@ -251,7 +255,7 @@
 						<th class="num">Salaires imposables</th>
 						<th class="num">Chômage</th>
 						<th class="num">Congés Spect.</th>
-						<th class="num">Droits d'auteur</th>
+						<th class="num">Droits (auteur + diffusion)</th>
 						<th class="num">Total</th>
 					</tr>
 				</thead>
@@ -301,7 +305,7 @@
 			</table>
 		</div>
 		<p class="hint">
-			Droits d'auteur {selectedYear} : {formatPreciseCurrency(summary.royaltiesGross)} bruts,
+			Droits d'auteur et de diffusion {selectedYear} : {formatPreciseCurrency(summary.royaltiesGross)} bruts,
 			{formatPreciseCurrency(summary.royaltiesWithheld)} de cotisations retenues,
 			{formatPreciseCurrency(summary.royaltiesNet)} nets versés.
 		</p>

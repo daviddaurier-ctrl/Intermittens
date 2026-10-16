@@ -128,7 +128,7 @@ export type IntermittencePeriod = {
 	notes: string;
 };
 
-export type RoyaltySource = 'SACEM' | 'SACD' | 'Droits directs' | 'Autre';
+export type RoyaltySource = 'SACEM' | 'SACD' | 'SCAM' | 'Droits directs' | 'Autre';
 export type RoyaltyStatus = 'Attendu' | 'Reçu' | 'Déclaré';
 export type WorkKind = 'Musique' | 'Spectacle vivant' | 'Audiovisuel' | 'Texte' | 'Autre';
 

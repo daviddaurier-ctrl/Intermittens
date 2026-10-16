@@ -1,6 +1,16 @@
 import type { AppData, RoyaltyPayment, RoyaltySource } from '$lib/types';
 
-export const royaltySources: RoyaltySource[] = ['SACEM', 'SACD', 'Droits directs', 'Autre'];
+export const royaltySources: RoyaltySource[] = ['SACEM', 'SACD', 'SCAM', 'Droits directs', 'Autre'];
+
+/**
+ * Two kinds of author income:
+ * - "auteur": rights paid by the producer under the cession contract (minimum garanti…);
+ * - "diffusion": broadcast/performance rights collected and paid by a society (SACD, SACEM, SCAM).
+ */
+export type RoyaltyFamily = 'auteur' | 'diffusion';
+export function royaltyFamily(source: RoyaltySource | string): RoyaltyFamily {
+	return source === 'SACD' || source === 'SACEM' || source === 'SCAM' ? 'diffusion' : 'auteur';
+}
 
 export type RoyaltyTotals = {
 	count: number;
@@ -16,6 +26,7 @@ export type YearOverview = {
 	year: string;
 	royalties: RoyaltyTotals;
 	bySource: { source: RoyaltySource; totals: RoyaltyTotals }[];
+	byFamily: Record<RoyaltyFamily, RoyaltyTotals>;
 	salaryNet: number;
 	salaryTaxable: number;
 	salaryGross: number;
@@ -95,6 +106,10 @@ export function buildYearOverview(data: AppData, year: string): YearOverview {
 	return {
 		year,
 		royalties,
+		byFamily: {
+			auteur: sumRoyalties(payments.filter((payment) => royaltyFamily(payment.source) === 'auteur')),
+			diffusion: sumRoyalties(payments.filter((payment) => royaltyFamily(payment.source) === 'diffusion'))
+		},
 		bySource: royaltySources.map((source) => ({
 			source,
 			totals: sumRoyalties(payments.filter((payment) => payment.source === source))

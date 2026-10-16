@@ -7,7 +7,10 @@
 		buildYearOverview,
 		effectiveNet,
 		paymentYear,
+		royaltyFamily,
 		royaltySources,
+		sumRoyalties,
+		type RoyaltyFamily,
 		royaltyYears,
 		workTotals
 	} from '$lib/royalties';
@@ -25,16 +28,40 @@
 	let selectedYear = $state(String(new Date().getFullYear()));
 	let selectedPaymentId = $state('');
 	let selectedWorkId = $state('');
+	let family = $state<RoyaltyFamily>('auteur');
+	const familyLabels: Record<RoyaltyFamily, { title: string; short: string; hint: string }> = {
+		auteur: {
+			title: 'Droits d’auteur',
+			short: 'versés par les producteurs',
+			hint: 'Payés par le producteur au titre du contrat de cession (minimum garanti, échéances).'
+		},
+		diffusion: {
+			title: 'Droits de diffusion',
+			short: 'SACD, SACEM, SCAM',
+			hint: 'Répartis par les sociétés d’auteurs quand tes œuvres sont diffusées ou jouées.'
+		}
+	};
+	const workFamily = (work: AuthorWork) => royaltyFamily(work.society);
+	const familyKeys: RoyaltyFamily[] = ['auteur', 'diffusion'];
 
 	let overview = $derived(buildYearOverview(appState.appData, selectedYear));
 	let yearPayments = $derived(
 		appState.appData.royalties
+			.filter((payment) => royaltyFamily(payment.source) === family)
 			.filter((payment) => paymentYear(payment) === selectedYear || !payment.paymentDate)
 			.sort((a, b) => (b.paymentDate || '9999').localeCompare(a.paymentDate || '9999'))
 	);
 	let selectedPayment = $derived(
 		appState.appData.royalties.find((payment) => payment.id === selectedPaymentId)
 	);
+	let familyTotals = $derived(
+		sumRoyalties(
+			appState.appData.royalties.filter(
+				(payment) => royaltyFamily(payment.source) === family && paymentYear(payment) === selectedYear
+			)
+		)
+	);
+	let familyWorks = $derived(appState.appData.works.filter((work) => workFamily(work) === family));
 	let selectedWork = $derived(appState.appData.works.find((work) => work.id === selectedWorkId));
 	let selectedWorkTotals = $derived(
 		selectedWork ? workTotals(appState.appData, selectedWork.id) : undefined
@@ -91,7 +118,7 @@
 		const today = new Date().toISOString().slice(0, 10);
 		const payment: RoyaltyPayment = {
 			id: createId('royalty'),
-			source: 'SACEM',
+			source: family === 'auteur' ? 'Droits directs' : 'SACD',
 			payerName: '',
 			workId: selectedWorkId,
 			label: '',
@@ -125,8 +152,8 @@
 		const work: AuthorWork = {
 			id: createId('work'),
 			title: 'Nouvelle œuvre',
-			kind: 'Musique',
-			society: 'SACEM',
+			kind: 'Audiovisuel',
+			society: family === 'auteur' ? 'Droits directs' : 'SACD',
 			reference: '',
 			coAuthors: '',
 			sharePercent: 100,
@@ -187,20 +214,40 @@
 	</div>
 </section>
 
-<section class="metrics-grid" aria-label="Droits d'auteur de l'année">
+<div class="family-switch" role="tablist" aria-label="Type de droits">
+	{#each familyKeys as key}
+		<button
+			type="button"
+			role="tab"
+			aria-selected={family === key}
+			class:active={family === key}
+			onclick={() => {
+				family = key;
+				selectedPaymentId = '';
+				selectedWorkId = '';
+			}}
+		>
+			<strong>{familyLabels[key].title}</strong>
+			<span>{familyLabels[key].short} · {formatCurrency(overview.byFamily[key].gross)} brut en {selectedYear}</span>
+		</button>
+	{/each}
+</div>
+<p class="hint family-hint">{familyLabels[family].hint}</p>
+
+<section class="metrics-grid" aria-label="Droits de l'année">
 	<div class="metric">
-		<span>Droits bruts {selectedYear}</span>
-		<strong>{formatCurrency(overview.royalties.gross)}</strong>
-		<small>{overview.royalties.count} versement(s) reçu(s)</small>
+		<span>{familyLabels[family].title} bruts {selectedYear}</span>
+		<strong>{formatCurrency(familyTotals.gross)}</strong>
+		<small>{familyTotals.count} versement(s) reçu(s)</small>
 	</div>
 	<div class="metric">
 		<span>Net perçu</span>
-		<strong>{formatCurrency(overview.royalties.net)}</strong>
-		<small>Cotisations précomptées {formatCurrency(overview.royalties.withheld)}</small>
+		<strong>{formatCurrency(familyTotals.net)}</strong>
+		<small>Cotisations précomptées {formatCurrency(familyTotals.withheld)}</small>
 	</div>
 	<div class="metric">
 		<span>À venir</span>
-		<strong>{formatCurrency(overview.royalties.expected)}</strong>
+		<strong>{formatCurrency(familyTotals.expected)}</strong>
 		<small>Versements marqués « Attendu »</small>
 	</div>
 	<div class="metric">
@@ -213,7 +260,7 @@
 <section class="view-grid two-columns">
 	<section class="panel">
 		<div class="panel-heading">
-			<h3>Versements</h3>
+			<h3>{family === 'auteur' ? 'Versements des producteurs' : 'Répartitions des sociétés d’auteurs'}</h3>
 			<button type="button" title="Ajouter un versement" onclick={addPayment}>+</button>
 		</div>
 		<div class="table-wrap">
@@ -258,7 +305,7 @@
 				<label>
 					<span>Source</span>
 					<select bind:value={selectedPayment.source}>
-						{#each royaltySources as source}
+						{#each royaltySources.filter((source) => royaltyFamily(source) === family || source === selectedPayment?.source) as source}
 							<option value={source}>{source}</option>
 						{/each}
 					</select>
@@ -282,7 +329,7 @@
 					<span>Œuvre</span>
 					<select bind:value={selectedPayment.workId}>
 						<option value="">Plusieurs œuvres / non précisé</option>
-						{#each appState.appData.works as work}
+						{#each familyWorks as work}
 							<option value={work.id}>{work.title}</option>
 						{/each}
 					</select>
@@ -410,9 +457,14 @@
 					<small>net imposable · brut {formatCurrency(overview.salaryGross)}</small>
 				</div>
 				<div>
-					<span>Droits d'auteur</span>
-					<strong>{formatCurrency(overview.royalties.gross)}</strong>
-					<small>brut · net {formatCurrency(overview.royalties.net)}</small>
+					<span>Droits d'auteur (producteurs)</span>
+					<strong>{formatCurrency(overview.byFamily.auteur.gross)}</strong>
+					<small>brut · net {formatCurrency(overview.byFamily.auteur.net)}</small>
+				</div>
+				<div>
+					<span>Droits de diffusion (SACD, SACEM…)</span>
+					<strong>{formatCurrency(overview.byFamily.diffusion.gross)}</strong>
+					<small>brut · net {formatCurrency(overview.byFamily.diffusion.net)}</small>
 				</div>
 			</div>
 
@@ -436,11 +488,11 @@
 <section class="view-grid two-columns">
 	<section class="panel">
 		<div class="panel-heading">
-			<h3>Œuvres</h3>
+			<h3>{family === 'auteur' ? 'Œuvres (contrats de cession)' : 'Œuvres diffusées'}</h3>
 			<button type="button" title="Ajouter une œuvre" onclick={addWork}>+</button>
 		</div>
 		<div class="list compact">
-			{#each appState.appData.works as work (work.id)}
+			{#each familyWorks as work (work.id)}
 				{@const balance = workBalance(work)}
 				<button
 					type="button"
@@ -448,17 +500,19 @@
 					onclick={() => (selectedWorkId = work.id)}
 				>
 					<strong class="work-line">
-						<span class="balance-dot" data-state={balance.state} title={balanceLabel[balance.state]}></span>
+						{#if family === 'auteur'}
+							<span class="balance-dot" data-state={balance.state} title={balanceLabel[balance.state]}></span>
+						{/if}
 						{work.title}
 					</strong>
 					<span
-						>{work.producer || work.society}{balance.promised
+						>{work.producer || work.society}{family === 'auteur' && balance.promised
 							? ` · reçu ${formatCurrency(balance.paid)} / promis ${formatCurrency(balance.promised)}`
 							: ` · reçu ${formatCurrency(balance.paid)}`}</span
 					>
 				</button>
 			{/each}
-			{#if appState.appData.works.length === 0}
+			{#if familyWorks.length === 0}
 				<p class="empty">Aucune œuvre. Ajoutez vos œuvres déposées pour suivre ce que chacune rapporte.</p>
 			{/if}
 		</div>
@@ -476,6 +530,7 @@
 					>
 				{/if}
 			</div>
+			{#if workFamily(selectedWork) === 'auteur'}
 			<div class="work-balance" data-state={balance.state}>
 				<div><span>Promis au contrat</span><strong>{balance.promised ? formatPreciseCurrency(balance.promised) : '—'}</strong></div>
 				<div><span>Reçu (décomptes)</span><strong>{formatPreciseCurrency(balance.paid)}</strong></div>
@@ -487,6 +542,16 @@
 			{#if selectedWork.promisedNotes}
 				<p class="hint">Montant promis lu dans : {selectedWork.promisedNotes}</p>
 			{/if}
+			{:else}
+				<div class="work-balance" data-state="ok">
+					<div><span>Droits perçus</span><strong>{formatPreciseCurrency(balance.paid)}</strong></div>
+					<div><span>Lignes de diffusion</span><strong>{broadcasts.length}</strong></div>
+					<div>
+						<span>Dernière répartition</span>
+						<strong>{broadcasts[0] ? formatDate(broadcasts[0].paymentDate) : '—'}</strong>
+					</div>
+				</div>
+			{/if}
 			<div class="form-grid tight">
 				<label class="wide">
 					<span>Titre</span>
@@ -496,10 +561,12 @@
 					<span>Producteur</span>
 					<input bind:value={selectedWork.producer} />
 				</label>
-				<label>
-					<span>Droits promis au contrat (brut)</span>
-					<input type="number" min="0" step="0.01" bind:value={selectedWork.promisedAmount} />
-				</label>
+				{#if workFamily(selectedWork) === 'auteur'}
+					<label>
+						<span>Droits promis au contrat (brut)</span>
+						<input type="number" min="0" step="0.01" bind:value={selectedWork.promisedAmount} />
+					</label>
+				{/if}
 				<label>
 					<span>Type</span>
 					<select bind:value={selectedWork.kind}>
@@ -586,6 +653,12 @@
 </section>
 
 <style>
+	.family-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 6px 0 4px; }
+	.family-switch button { display: grid; gap: 2px; text-align: left; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(255, 61, 139, 0.25); background: rgba(255, 255, 255, 0.6); cursor: pointer; }
+	.family-switch button.active { background: linear-gradient(135deg, #ff5fa2, #ff3d8b); color: #fff; border-color: transparent; box-shadow: 0 6px 18px rgba(255, 61, 139, 0.25); }
+	.family-switch span { font-size: 0.8rem; opacity: 0.85; }
+	.family-hint { margin: 0 0 10px; }
+	@media (max-width: 640px) { .family-switch { grid-template-columns: 1fr; } }
 	.broadcast-title { margin: 6px 0 4px; font-size: 0.95rem; }
 	.work-line { display: inline-flex; align-items: center; gap: 6px; }
 	.balance-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; background: #c9b3c0; }
