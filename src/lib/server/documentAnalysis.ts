@@ -1015,6 +1015,16 @@ function analyzeAudiovisualPayroll(text: string) {
 		text,
 		new RegExp(`\\b${looseWords('total des cotisations et contributions')}\\s+${moneyPattern}`, 'i')
 	);
+	// Fallback when the taxable line is unreadable (letter-spaced PDF text): taxable net =
+	// net social + non-deductible CSG/CRDS ("… non deductible de l impot sur le revenu <base> <taux> <montant>").
+	const nonDeductibleCsg = toNumber(
+		text.match(
+			new RegExp(
+				String.raw`csg\/crds non deductible de l impot sur le revenu\s+${moneyPattern}\s+${numberPattern}\s+${moneyPattern}`,
+				'i'
+			)
+		)?.[3]
+	);
 	// Bottom block: "Brut <période> <cumul> Heures <période> <cumul>".
 	const hours = toNumber(
 		text.match(
@@ -1036,6 +1046,9 @@ function analyzeAudiovisualPayroll(text: string) {
 	if (grossSalary !== undefined) fields.grossSalary = grossSalary;
 	if (netSalary !== undefined) fields.netSalary = netSalary;
 	if (taxableNetSalary !== undefined) fields.taxableNetSalary = taxableNetSalary;
+	else if (netSalary !== undefined && nonDeductibleCsg !== undefined) {
+		fields.taxableNetSalary = Math.round((netSalary + nonDeductibleCsg) * 100) / 100;
+	}
 	if (contributions !== undefined) fields.contributions = contributions;
 	if (hours !== undefined && hours > 0) fields.hours = hours;
 	if (cachets !== undefined && cachets > 0) {
