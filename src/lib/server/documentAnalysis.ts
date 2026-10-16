@@ -1118,7 +1118,9 @@ export function analyzeDocumentText(text: string): DocumentAnalysis {
 	const netSalary = matchNetSalary(searchable);
 	const taxableNetSalary =
 		matchPayrollTaxableNet(searchable) ??
-		matchMoney(searchable, ['net imposable', 'net fiscal', 'imposable', 'net declarable']);
+		matchMoney(searchable, ['net imposable', 'net fiscal', 'imposable', 'net declarable']) ??
+		// "Montant net imposable 127,45 127,45" (period then cumul, no € sign).
+		toNumber(searchable.match(new RegExp(String.raw`\bmontant net imposable\s+${moneyPattern}`, 'i'))?.[1]);
 	const contributions =
 		matchPayrollContributions(searchable) ??
 		matchMoney(searchable, [
