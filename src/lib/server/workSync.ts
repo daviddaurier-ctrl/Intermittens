@@ -231,6 +231,16 @@ export async function syncWorks(
 		for (const line of payment.lines ?? []) {
 			if (repairSacdLine(line, knownTitles)) changed += 1;
 		}
+		// Keep the label in line with the repaired titles: "Bordereau Mai 2024 — Les Enfants Terribles".
+		if (payment.lines?.length) {
+			const prefix = payment.label.split(' — ')[0];
+			const titles = [...new Set(payment.lines.map((line) => line.title).filter(Boolean))];
+			const label = [prefix, titles.join(', ')].filter(Boolean).join(' — ');
+			if (label !== payment.label) {
+				payment.label = label;
+				changed += 1;
+			}
+		}
 		if (payment.lines?.length && payment.workId) {
 			const ids = new Set(payment.lines.map((line) => line.workId));
 			if (ids.size !== 1 || !ids.has(payment.workId)) payment.workId = '';
