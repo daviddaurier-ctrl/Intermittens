@@ -1948,6 +1948,9 @@ pre {
 html {
 	color-scheme: light;
 	background: var(--mimi-blush);
+	/* Stop iPhone Safari from enlarging some table rows more than others. */
+	-webkit-text-size-adjust: 100%;
+	text-size-adjust: 100%;
 }
 
 body {

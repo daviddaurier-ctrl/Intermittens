@@ -198,9 +198,28 @@ function normalizeFutureContractAmountType(value: unknown): FutureContractAmount
 		: 'gross';
 }
 
+/**
+ * "FUTUR ANTERIEUR PRODUCTION (FUTUR ANTERIEUR PRODUCTION)" → "FUTUR ANTERIEUR PRODUCTION":
+ * drops a parenthesised trade name that only repeats words already in the name.
+ */
+export function withoutRepeatedTradeName(value: string) {
+	return value.replace(/^([^()]+?)\s*\(([^()]+)\)/, (whole, outer: string, inner: string) => {
+		const words = (text: string) =>
+			text
+				.normalize('NFD')
+				.replace(/\p{Diacritic}/gu, '')
+				.toLowerCase()
+				.split(/[^a-z0-9]+/)
+				.filter((word) => word.length >= 2);
+		const outerWords = new Set(words(outer));
+		const innerWords = words(inner);
+		return innerWords.length && innerWords.every((word) => outerWords.has(word)) ? outer.trim() : whole;
+	});
+}
+
 function normalizeCompany(company: Partial<Company>): Company {
 	const id = cleanString(company.id) || createId('company');
-	const name = cleanString(company.name) || 'Nouvelle structure';
+	const name = withoutRepeatedTradeName(cleanString(company.name)) || 'Nouvelle structure';
 
 	return {
 		id,
@@ -247,7 +266,7 @@ function normalizeContract(contract: Partial<Contract>): Contract {
 		id: cleanString(contract.id) || createId('contract'),
 		companyId: cleanString(contract.companyId),
 		projectId: cleanString(contract.projectId),
-		title: cleanString(contract.title) || 'Nouveau contrat',
+		title: withoutRepeatedTradeName(cleanString(contract.title)) || 'Nouveau contrat',
 		startDate: cleanString(contract.startDate),
 		endDate: cleanString(contract.endDate),
 		hours: normalizeNumber(contract.hours),
