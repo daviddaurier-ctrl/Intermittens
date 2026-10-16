@@ -28,7 +28,7 @@
 </script>
 
 <svelte:head>
-	<title>Liaison Google Drive · InterMittens</title>
+	<title>Liaison Google Drive · Intermimi</title>
 </svelte:head>
 
 <main class="access-page">

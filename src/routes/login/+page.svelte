@@ -3,15 +3,15 @@
 </script>
 
 <svelte:head>
-	<title>Accès sécurisé · InterMittens</title>
+	<title>Intermimi ♥ · Connexion</title>
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
 <main class="access-page">
 	<section class="access-card" aria-labelledby="access-title">
-		<div class="access-brand" aria-hidden="true">IM</div>
-		<p class="access-eyebrow">Espace privé</p>
-		<h1 id="access-title">Bienvenue sur InterMittens</h1>
+		<div class="access-brand" aria-hidden="true">♥</div>
+		<p class="access-eyebrow">Espace privé ♥</p>
+		<h1 id="access-title">Bienvenue sur Intermimi</h1>
 		<p class="access-intro">
 			Saisissez le mot de passe pour accéder à votre espace. Cet appareil sera ensuite reconnu
 			pendant 6 mois.
@@ -33,7 +33,7 @@
 				<p id="access-error" class="access-error" role="alert">{form.error}</p>
 			{/if}
 
-			<button class="primary" type="submit">Accéder à InterMittens</button>
+			<button class="primary" type="submit">Entrer dans Intermimi ♥</button>
 		</form>
 
 		<p class="access-note">Connexion mémorisée uniquement sur ce navigateur.</p>

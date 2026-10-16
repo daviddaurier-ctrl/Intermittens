@@ -59,33 +59,33 @@
 	}
 
 	.document-presence-icon {
-		--document-color: #77817c;
+		--document-color: #b0789a;
 
 		display: inline-grid;
 		width: 23px;
 		height: 23px;
 		place-items: center;
-		border: 1px solid rgba(146, 156, 151, 0.2);
+		border: 1px solid rgba(176, 112, 144, 0.2);
 		border-radius: 6px;
-		background: rgba(119, 129, 124, 0.08);
-		color: #77817c;
+		background: rgba(176, 112, 144, 0.08);
+		color: #b0789a;
 		opacity: 0.62;
 	}
 
 	.document-presence-icon[data-kind='Contrat'] {
-		--document-color: #67d8c2;
+		--document-color: #ff3d8b;
 	}
 
 	.document-presence-icon[data-kind='AEM'] {
-		--document-color: #d9b15f;
+		--document-color: #ff8fb8;
 	}
 
 	.document-presence-icon[data-kind='Fiche de paie'] {
-		--document-color: #8ab4f8;
+		--document-color: #5b7be0;
 	}
 
 	.document-presence-icon[data-kind='Congé Spectacle'] {
-		--document-color: #d99bea;
+		--document-color: #b04fd0;
 	}
 
 	.document-presence-icon.present {

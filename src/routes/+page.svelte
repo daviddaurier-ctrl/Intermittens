@@ -32,7 +32,7 @@
 </script>
 
 <svelte:head>
-	<title>InterMittens</title>
+	<title>Intermimi ♥</title>
 </svelte:head>
 
 <AppShell {state}>

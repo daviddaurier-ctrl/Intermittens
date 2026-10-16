@@ -1,13 +1,13 @@
 <svelte:head>
-	<title>Confidentialité · InterMittens</title>
+	<title>Confidentialité · Intermimi</title>
 </svelte:head>
 
 <main class="access-page">
 	<section class="access-card setup-card">
-		<p class="access-eyebrow">InterMittens</p>
+		<p class="access-eyebrow">Intermimi</p>
 		<h1>Confidentialité</h1>
 		<p class="access-intro">
-			InterMittens est un outil personnel de suivi de l'intermittence et des droits d'auteur,
+			Intermimi est un outil personnel de suivi de l'intermittence et des droits d'auteur,
 			utilisé uniquement par son propriétaire et protégé par mot de passe.
 		</p>
 		<p class="access-intro">

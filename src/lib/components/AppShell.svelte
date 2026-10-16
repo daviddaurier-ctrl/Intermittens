@@ -34,9 +34,9 @@
 <main class="app-shell" oninput={state.touch} onchange={state.touch}>
 	<aside class="sidebar">
 		<div class="brand">
-			<div class="brand-mark">IM</div>
+			<div class="brand-mark" aria-hidden="true">♥</div>
 			<div>
-				<h1>InterMittens</h1>
+				<h1>Intermimi</h1>
 				<p>
 					{state.appData.contracts.length} contrats · {state.appData.companies.length} structures
 				</p>
@@ -84,6 +84,8 @@
 		</div>
 
 		<ServerStatus />
+
+		<p class="love-note">fait avec amour ♥</p>
 
 		<div
 			class="deployment-info"
