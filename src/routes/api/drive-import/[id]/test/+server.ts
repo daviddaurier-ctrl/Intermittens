@@ -1,6 +1,10 @@
 import { error, json, type RequestHandler } from '@sveltejs/kit';
 
-import { analyzeDocumentText, extractPdfDocumentText } from '$lib/server/documentAnalysis';
+import {
+	analyzeDocumentText,
+	extractPdfDocumentText,
+	extractTextFromBuffer
+} from '$lib/server/documentAnalysis';
 import { driveDownloadById, driveEnabled } from '$lib/server/googleDrive';
 
 /** Dry run: analyses one Drive document and reports what was found, without saving anything. */
@@ -11,7 +15,14 @@ export const GET: RequestHandler = async ({ params, url }) => {
 	if (!file) error(404, 'Document introuvable.');
 
 	const started = Date.now();
-	const extraction = await extractPdfDocumentText(file.content);
+	const isPdf = (file.meta.mimeType ?? '').includes('pdf');
+	const extraction = isPdf
+		? await extractPdfDocumentText(file.content)
+		: (() => ({ pages: [] as string[], ocrPageNumbers: [] as number[], ocrFailed: false, text: '' }))();
+	if (!isPdf) {
+		extraction.text = await extractTextFromBuffer(file.meta.name, file.meta.mimeType ?? '', file.content);
+		extraction.pages = [extraction.text];
+	}
 	const analysis = analyzeDocumentText(extraction.text);
 
 	return json({

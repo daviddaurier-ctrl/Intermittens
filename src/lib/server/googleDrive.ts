@@ -351,7 +351,20 @@ export async function exchangeAuthCode(code: string, redirectUri: string) {
 
 export type DriveImportFile = { id: string; name: string; mimeType: string; size: number };
 
-const IMPORTABLE_MIME = /^(application\/pdf|text\/plain|text\/csv|text\/markdown)$/;
+const IMPORTABLE_MIME =
+	/^(application\/pdf|text\/plain|text\/csv|text\/markdown|image\/(?:jpeg|png|heic|heif|webp|gif))$/;
+const IMAGE_MIME = /^image\//;
+/** Images Drive's OCR can't take as is (iPhone HEIC…) or too big for Vercel: use a JPEG rendition. */
+const NEEDS_JPEG = /^image\/(?:heic|heif|webp)$/;
+const MAX_DIRECT_IMAGE_BYTES = 3.5 * 1024 * 1024;
+
+function jpegName(name: string) {
+	return /\.[a-z0-9]{2,5}$/i.test(name) ? name.replace(/\.[a-z0-9]{2,5}$/i, '.jpg') : `${name}.jpg`;
+}
+
+function deliveredAsJpeg(mimeType: string, size: number) {
+	return IMAGE_MIME.test(mimeType) && (NEEDS_JPEG.test(mimeType) || size > MAX_DIRECT_IMAGE_BYTES);
+}
 
 async function listChildren(parentId: string, extraQuery = '') {
 	const files: (DriveFile & { size?: string })[] = [];
@@ -421,11 +434,14 @@ export async function driveListImportableFiles(folderId: string, depth = 0) {
 			continue;
 		}
 		if (!child.mimeType || !IMPORTABLE_MIME.test(child.mimeType)) continue;
+		const size = Number(child.size ?? 0);
+		const asJpeg = deliveredAsJpeg(child.mimeType, size);
 		result.push({
 			id: child.id,
-			name: child.name,
-			mimeType: child.mimeType,
-			size: Number(child.size ?? 0)
+			name: asJpeg ? jpegName(child.name) : child.name,
+			mimeType: asJpeg ? 'image/jpeg' : child.mimeType,
+			// Converted images come back as a ~1 MB JPEG whatever the original size.
+			size: asJpeg ? 0 : size
 		});
 	}
 	return result;
@@ -438,6 +454,12 @@ export async function driveDownloadById(id: string) {
 	if (metaResponse.status === 404) return undefined;
 	const meta = (await metaResponse.json()) as DriveFile & { size?: string };
 	if (!meta.mimeType || !IMPORTABLE_MIME.test(meta.mimeType)) return undefined;
+
+	if (deliveredAsJpeg(meta.mimeType, Number(meta.size ?? 0))) {
+		const jpeg = await driveImageAsJpeg(id);
+		if (!jpeg) return undefined;
+		return { meta: { ...meta, name: jpegName(meta.name), mimeType: 'image/jpeg' }, content: jpeg };
+	}
 
 	const response = await driveFetch(`${API}/files/${encodeURIComponent(id)}?alt=media`);
 	if (response.status === 404) return undefined;
@@ -469,4 +491,57 @@ export async function driveRecentFiles(sinceIso: string) {
 		modifiedTime: file.modifiedTime ?? '',
 		folder: (file.parents ?? []).map((id) => parentNames.get(id) || '').join(', ')
 	}));
+}
+
+/** Large JPEG rendition of an image (HEIC included), produced by Drive itself. */
+async function driveImageAsJpeg(id: string) {
+	const metaResponse = await driveFetch(`${API}/files/${encodeURIComponent(id)}?fields=thumbnailLink`);
+	const link = ((await metaResponse.json()) as { thumbnailLink?: string }).thumbnailLink;
+	if (!link) return undefined;
+	const sized = /=s\d+/.test(link) ? link.replace(/=s\d+(?:-[a-z0-9-]+)?$/i, '=s2400') : `${link}=s2400`;
+	// The thumbnail link is usually readable as is; retry with the token if it isn't.
+	let response = await fetch(sized);
+	if (!response.ok) {
+		response = await fetch(sized, { headers: { authorization: `Bearer ${await accessToken()}` } });
+	}
+	if (!response.ok) return undefined;
+	return Buffer.from(await response.arrayBuffer());
+}
+
+/**
+ * Text of an image through Google Drive's own OCR: the image is uploaded as a Google Doc
+ * (French OCR), exported as plain text, then the temporary Doc is deleted.
+ */
+export async function driveOcrImage(content: Buffer, mimeType: string) {
+	const boundary = `intermimi_${Math.random().toString(36).slice(2)}`;
+	const metadata = {
+		name: 'intermimi-ocr-temp',
+		mimeType: 'application/vnd.google-apps.document',
+		parents: [await rootFolderId()]
+	};
+	const body = Buffer.concat([
+		Buffer.from(
+			`--${boundary}\r\ncontent-type: application/json; charset=UTF-8\r\n\r\n` +
+				`${JSON.stringify(metadata)}\r\n--${boundary}\r\ncontent-type: ${mimeType}\r\n\r\n`
+		),
+		content,
+		Buffer.from(`\r\n--${boundary}--`)
+	]);
+	const created = await driveFetch(
+		`${UPLOAD_API}/files?uploadType=multipart&ocrLanguage=fr&fields=id`,
+		{
+			method: 'POST',
+			headers: { 'content-type': `multipart/related; boundary=${boundary}` },
+			body
+		}
+	);
+	const { id } = (await created.json()) as { id: string };
+	try {
+		const exported = await driveFetch(
+			`${API}/files/${id}/export?mimeType=${encodeURIComponent('text/plain')}`
+		);
+		return exported.ok ? (await exported.text()).replace(/^\uFEFF/, '') : '';
+	} finally {
+		await driveFetch(`${API}/files/${id}`, { method: 'DELETE' }).catch(() => undefined);
+	}
 }

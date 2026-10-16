@@ -65,3 +65,17 @@ export async function recognizePdfPages(document: PDFDocumentProxy, pageNumbers:
 
 	return pages;
 }
+
+export async function recognizeImage(image: Buffer) {
+	const worker = await Tesseract.createWorker(frenchLanguageData.code, Tesseract.OEM.LSTM_ONLY, {
+		cacheMethod: 'none',
+		gzip: frenchLanguageData.gzip,
+		langPath: frenchLanguageData.langPath
+	});
+	try {
+		await worker.setParameters({ preserve_interword_spaces: '1' });
+		return (await worker.recognize(image)).data.text.trim();
+	} finally {
+		await worker.terminate();
+	}
+}

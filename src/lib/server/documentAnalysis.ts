@@ -271,7 +271,28 @@ export async function extractTextFromBuffer(fileName: string, type: string, buff
 		return normalizeText(new TextDecoder('utf-8').decode(buffer));
 	}
 
+	if (lowerType.startsWith('image/') || /\.(jpe?g|png|webp|gif|heic|heif)$/.test(lowerName)) {
+		return normalizeText(await extractImageText(buffer, lowerType || 'image/jpeg'));
+	}
+
 	return '';
+}
+
+/** Photos of documents: Google Drive OCR when linked, local OCR otherwise. */
+async function extractImageText(buffer: Buffer, mimeType: string) {
+	try {
+		const { driveEnabled, driveOcrImage } = await import('$lib/server/googleDrive');
+		if (driveEnabled()) return await driveOcrImage(buffer, mimeType);
+	} catch (cause) {
+		console.error('OCR Google Drive impossible:', cause);
+	}
+	try {
+		const { recognizeImage } = await import('$lib/server/pdfOcr');
+		return await recognizeImage(buffer);
+	} catch (cause) {
+		console.error('OCR image indisponible:', cause);
+		return '';
+	}
 }
 
 export async function extractTextFromFile(file: File, buffer: Buffer) {
