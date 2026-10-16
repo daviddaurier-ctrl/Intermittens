@@ -1,49 +1,18 @@
 import { base } from '$app/paths';
 import { passwordIsValid, rememberClient } from '$lib/server/access';
+import { checkLogin, recordFailure, recordSuccess } from '$lib/server/loginGuard';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
-const MAX_ATTEMPTS = 5;
-const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
-
-type Attempt = {
-	count: number;
-	expiresAt: number;
-};
-
-const attempts = new Map<string, Attempt>();
-
-function clientKey(getClientAddress: () => string, userAgent: string | null) {
-	let address = 'unknown';
-
+function clientAddress(getClientAddress: () => string) {
 	try {
-		address = getClientAddress();
-	} catch {}
-
-	return `${address}:${userAgent?.slice(0, 160) || 'unknown'}`;
+		return getClientAddress();
+	} catch {
+		return 'unknown';
+	}
 }
 
-function currentAttempt(key: string, now: number) {
-	if (attempts.size >= 1_000) {
-		for (const [storedKey, storedAttempt] of attempts) {
-			if (storedAttempt.expiresAt <= now) attempts.delete(storedKey);
-		}
-
-		if (attempts.size >= 1_000) {
-			attempts.delete(attempts.keys().next().value as string);
-		}
-	}
-
-	const attempt = attempts.get(key);
-
-	if (!attempt || attempt.expiresAt <= now) {
-		const fresh = { count: 0, expiresAt: now + ATTEMPT_WINDOW_MS };
-		attempts.set(key, fresh);
-		return fresh;
-	}
-
-	return attempt;
-}
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function safeDestination(candidate: string | null) {
 	const fallback = `${base}/`;
@@ -74,23 +43,31 @@ export const load: PageServerLoad = ({ locals, url }) => {
 
 export const actions: Actions = {
 	default: async ({ cookies, getClientAddress, request, url }) => {
-		const key = clientKey(getClientAddress, request.headers.get('user-agent'));
-		const now = Date.now();
-		const attempt = currentAttempt(key, now);
+		const address = clientAddress(getClientAddress);
+		const check = await checkLogin(address);
 
-		if (attempt.count >= MAX_ATTEMPTS) {
-			return fail(429, { error: 'Trop de tentatives. Réessayez dans quelques minutes.' });
+		if (!check.allowed) {
+			const minutes = check.retryInMinutes;
+			return fail(429, {
+				error: `Trop de tentatives. Réessayez dans ${minutes} minute${minutes > 1 ? 's' : ''}.`
+			});
 		}
 
 		const formData = await request.formData();
 		const password = formData.get('password');
 
 		if (typeof password !== 'string' || !passwordIsValid(password)) {
-			attempt.count += 1;
-			return fail(400, { error: 'Mot de passe incorrect.' });
+			const result = await recordFailure(address);
+			// Slow down guessing a little more on every failure.
+			await pause(800);
+			return fail(400, {
+				error: result.locked
+					? 'Mot de passe incorrect. Trop de tentatives : connexion bloquée pour un moment.'
+					: `Mot de passe incorrect. Encore ${result.remaining} essai${result.remaining > 1 ? 's' : ''} avant blocage.`
+			});
 		}
 
-		attempts.delete(key);
+		await recordSuccess(address);
 		rememberClient(cookies, url.protocol === 'https:');
 		throw redirect(303, safeDestination(url.searchParams.get('next')));
 	}
