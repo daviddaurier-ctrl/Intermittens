@@ -1,12 +1,22 @@
 <script lang="ts">
 	import {
+		contractHealth,
 		hasRequiredDocument,
 		requiredContractDocuments,
 		type RequiredContractDocumentKind
 	} from '$lib/documentPresence';
-	import type { ContractDocument } from '$lib/types';
+	import type { Contract, ContractDocument } from '$lib/types';
 
-	let { documents }: { documents: readonly Pick<ContractDocument, 'kind'>[] } = $props();
+	let {
+		documents,
+		contract
+	}: {
+		documents: readonly Pick<ContractDocument, 'kind'>[];
+		contract?: Pick<Contract, 'startDate' | 'endDate'>;
+	} = $props();
+
+	let health = $derived(contract ? contractHealth(contract, documents) : null);
+	const healthLabel = { ok: 'Dossier complet', partial: 'Documents manquants', missing: 'Contrat signé manquant' };
 
 	function isPresent(kind: RequiredContractDocumentKind) {
 		return hasRequiredDocument(documents, kind);
@@ -14,6 +24,17 @@
 </script>
 
 <div class="document-presence" aria-label="Présence des documents du contrat">
+	{#if health}
+		<span
+			class="health-dot"
+			data-health={health.health}
+			role="img"
+			aria-label={healthLabel[health.health]}
+			title={health.missing.length
+				? `${healthLabel[health.health]} : ${health.missing.join(', ')}`
+				: healthLabel[health.health]}
+		></span>
+	{/if}
 	{#each requiredContractDocuments as document}
 		{@const present = isPresent(document.kind)}
 		<span
@@ -56,6 +77,27 @@
 		flex: 0 0 auto;
 		gap: 4px;
 		align-items: center;
+	}
+
+	.health-dot {
+		width: 11px;
+		height: 11px;
+		margin-right: 3px;
+		border-radius: 50%;
+		flex: 0 0 auto;
+		box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
+	}
+
+	.health-dot[data-health='ok'] {
+		background: #2fb36b;
+	}
+
+	.health-dot[data-health='partial'] {
+		background: #f59e0b;
+	}
+
+	.health-dot[data-health='missing'] {
+		background: #e5383b;
 	}
 
 	.document-presence-icon {

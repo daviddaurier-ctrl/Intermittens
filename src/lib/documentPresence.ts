@@ -52,3 +52,29 @@ export function summarizeContractDocuments(
 		missingByKind
 	};
 }
+
+export type ContractHealth = 'ok' | 'partial' | 'missing';
+
+/**
+ * Traffic-light summary of a contract's paperwork:
+ * - red ("missing"): the signed contract itself is not attached;
+ * - orange ("partial"): the contract is there but, once the job is over, the payslip or AEM is missing;
+ * - green ("ok"): everything expected so far is attached.
+ * Congés Spectacles statements are yearly (Audiens), so they are not expected per contract.
+ */
+export function contractHealth(
+	contract: Pick<Contract, 'startDate' | 'endDate'>,
+	documents: readonly Pick<ContractDocument, 'kind'>[],
+	today = new Date().toISOString().slice(0, 10)
+): { health: ContractHealth; missing: string[] } {
+	const ended = (contract.endDate || contract.startDate || '9999') < today;
+	const expected: RequiredContractDocumentKind[] = ended
+		? ['Contrat', 'Fiche de paie', 'AEM']
+		: ['Contrat'];
+	const missing = expected.filter((kind) => !hasRequiredDocument(documents, kind));
+	const labels = missing.map(
+		(kind) => requiredContractDocuments.find((item) => item.kind === kind)?.label ?? kind
+	);
+	if (missing.includes('Contrat')) return { health: 'missing', missing: labels };
+	return { health: missing.length ? 'partial' : 'ok', missing: labels };
+}

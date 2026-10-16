@@ -264,7 +264,7 @@
 							{/if}
 							· {formatNumber(contract.hours, 0)} h
 						</i>
-						<DocumentPresence documents={appState.documentsFor(contract)} />
+						<DocumentPresence documents={appState.documentsFor(contract)} {contract} />
 					</div>
 				</button>
 			{/each}

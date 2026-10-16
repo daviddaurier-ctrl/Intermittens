@@ -261,6 +261,7 @@
 														<td>
 															<DocumentPresence
 																documents={appState.documentsFor(detail.contract)}
+																contract={detail.contract}
 															/>
 														</td>
 													</tr>

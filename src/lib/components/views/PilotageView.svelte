@@ -239,7 +239,7 @@
 							<td>{formatNumber(contractRecognizedHours(contract), 0)}</td>
 							<td>{formatCurrency(contract.netSalary)}</td>
 							<td><span class="status" data-status={contract.status}>{contract.status}</span></td>
-							<td><DocumentPresence documents={appState.documentsFor(contract)} /></td>
+							<td><DocumentPresence documents={appState.documentsFor(contract)} {contract} /></td>
 						</tr>
 					{/each}
 					{#if appState.recentContracts.length === 0}
