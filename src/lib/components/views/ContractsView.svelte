@@ -10,6 +10,58 @@
 
 	let { state: appState }: { state: IntermittensState } = $props();
 	let selectedContractsPeriodKey = $state('all');
+	let newProjectName = $state('');
+	let creatingProject = $state(false);
+
+	const employmentStatuses = [
+		'Artiste',
+		'Technicien',
+		'Technicien son',
+		'Technicien video',
+		'Regisseur',
+		'Artiste musicien',
+		'Artiste dramatique',
+		'Artiste interprete'
+	];
+
+	function onProjectChange(value: string) {
+		const contract = appState.selectedContract;
+		if (!contract) return;
+		if (value === '__new__') {
+			creatingProject = true;
+			newProjectName = '';
+			return;
+		}
+		contract.projectId = value;
+		creatingProject = false;
+		appState.touch();
+	}
+
+	function createProjectForContract() {
+		const contract = appState.selectedContract;
+		const name = newProjectName.trim();
+		if (!contract || !name) return;
+		const existing = appState.appData.projects.find(
+			(project) =>
+				project.name.trim().toLowerCase() === name.toLowerCase() &&
+				(!contract.companyId || project.companyId === contract.companyId)
+		);
+		const project = existing ?? {
+			id: `project_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`,
+			companyId: contract.companyId,
+			name,
+			role: '',
+			location: '',
+			startDate: contract.startDate,
+			endDate: contract.endDate,
+			notes: ''
+		};
+		if (!existing) appState.appData.projects.unshift(project);
+		contract.projectId = project.id;
+		creatingProject = false;
+		newProjectName = '';
+		appState.touch();
+	}
 
 	let contractCalendarYears = $derived(
 		[
@@ -271,13 +323,33 @@
 				</label>
 				<label>
 					<span>Projet</span>
-					<select bind:value={appState.selectedContract.projectId}>
+					<select
+						value={creatingProject ? '__new__' : appState.selectedContract.projectId}
+						onchange={(event) => onProjectChange(event.currentTarget.value)}
+					>
 						<option value="">Sans projet</option>
 						{#each availableProjectsForSelectedContract as project}
 							<option value={project.id}>{project.name}</option>
 						{/each}
+						<option value="__new__">+ Nouveau projet…</option>
 					</select>
 				</label>
+				{#if creatingProject}
+					<div class="wide new-project-row">
+						<input
+							placeholder="Nom du projet, ex. Morphose 2.0"
+							bind:value={newProjectName}
+							onkeydown={(event) => {
+								if (event.key === 'Enter') {
+									event.preventDefault();
+									createProjectForContract();
+								}
+							}}
+						/>
+						<button class="primary" type="button" onclick={createProjectForContract}>Créer</button>
+						<button type="button" onclick={() => (creatingProject = false)}>Annuler</button>
+					</div>
+				{/if}
 				<label>
 					<span>Début</span>
 					<DateInput bind:value={appState.selectedContract.startDate} />
@@ -301,8 +373,13 @@
 					<input type="number" min="0" step="1" bind:value={appState.selectedContract.cachets} />
 				</label>
 				<label>
-					<span>Statut metier</span>
-					<input bind:value={appState.selectedContract.employmentStatus} />
+					<span>Statut métier</span>
+					<input list="employment-statuses" bind:value={appState.selectedContract.employmentStatus} />
+					<datalist id="employment-statuses">
+						{#each employmentStatuses as status}
+							<option value={status}></option>
+						{/each}
+					</datalist>
 				</label>
 				<label>
 					<span>Net</span>

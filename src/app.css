@@ -2203,3 +2203,10 @@ tr.selected {
 .access-card h1 {
 	font-size: 28px;
 }
+
+.new-project-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto auto;
+	gap: 8px;
+	align-items: center;
+}

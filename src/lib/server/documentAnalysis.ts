@@ -485,6 +485,13 @@ function matchEmploymentStatus(text: string) {
 		{ pattern: /\bartiste\s+choregraphique\b/i, label: 'Artiste choregraphique' },
 		{ pattern: /\bartiste\s+dramatique\b/i, label: 'Artiste dramatique' },
 		{ pattern: /\bartiste\s+interprete\b/i, label: 'Artiste interprete' },
+		// Technical jobs named by their title: they win over a stray "artiste" elsewhere.
+		{
+			pattern:
+				/\b(?:concepteur|conceptrice|createur|creatrice|ingenieur|ingenieure)\s+(?:du\s+|de\s+la\s+)?(?:son|sonore|lumiere|lumieres)\b/i,
+			label: 'Technicien'
+		},
+		{ pattern: /\b(?:sonorisateur|eclairagiste|machiniste|regisseuse)\b/i, label: 'Technicien' },
 		{ pattern: /\btechnicien\s+video\b/i, label: 'Technicien video' },
 		{ pattern: /\btechnicien\s+son\b/i, label: 'Technicien son' },
 		{ pattern: /\bregisseur\b/i, label: 'Regisseur' },

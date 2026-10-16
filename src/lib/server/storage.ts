@@ -434,11 +434,31 @@ function normalizeTaxYear(value: Partial<TaxYearSettings>): TaxYearSettings {
 	};
 }
 
+const TECHNICAL_JOB =
+	/\b(?:concepteur|conceptrice|createur|creatrice|ingenieur|ingenieure)\s+(?:du\s+|de\s+la\s+)?(?:son|sonore|lumiere|lumieres)\b|\b(?:sonorisateur|eclairagiste|machiniste)\b/i;
+
+/** Contracts read as "Artiste" although their document names a technical job (sound, light…). */
+function fixTechnicalStatuses(data: AppData) {
+	for (const contract of data.contracts) {
+		if (contract.employmentStatus !== 'Artiste') continue;
+		const texts = data.documents
+			.filter((document) => contract.documentIds.includes(document.id))
+			.map((document) =>
+				document.extractedTextPreview
+					.normalize('NFD')
+					.replace(/\p{Diacritic}/gu, '')
+					.toLowerCase()
+			);
+		if (texts.some((text) => TECHNICAL_JOB.test(text))) contract.employmentStatus = 'Technicien';
+	}
+	return data;
+}
+
 export function normalizeData(input: Partial<AppData>): AppData {
 	const defaults = createDefaultData();
 	const settings = { ...defaults.settings, ...(input.settings ?? {}) };
 
-	return {
+	return fixTechnicalStatuses({
 		version: 1,
 		updatedAt: now(),
 		companies: Array.isArray(input.companies) ? input.companies.map(normalizeCompany) : [],
@@ -506,7 +526,7 @@ export function normalizeData(input: Partial<AppData>): AppData {
 						)
 					: {}
 		}
-	};
+	});
 }
 
 async function writeJson(data: AppData) {
