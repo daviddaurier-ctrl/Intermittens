@@ -235,7 +235,7 @@ export function classifyDocumentKind(text: string, fallback: DocumentKind) {
 		return 'Contrat' as const;
 	}
 
-	if (/bulletin de (?:paie|salaire)|fiche de paie/.test(normalized)) {
+	if (/bulletin de (?:paie|salaire)|fiche de paie|periode de paie/.test(normalized)) {
 		return 'Fiche de paie' as const;
 	}
 

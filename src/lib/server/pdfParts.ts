@@ -72,7 +72,7 @@ export function documentKindFromFileName(fileName: string, fallback: DocumentKin
 	const tokens = searchable.split(/[^a-z0-9]+/).filter(Boolean);
 
 	if (tokens.includes('aem')) return 'AEM';
-	if (tokens.includes('bp') || /\b(?:bulletin|fiche|paie)\b/.test(searchable)) {
+	if (tokens.includes('bp') || /\b(?:bulletins?|fiches?|paies?)\b/.test(searchable)) {
 		return 'Fiche de paie';
 	}
 	if (tokens.includes('cs') || /\b(?:conge|conges|spectacle|spectacles)\b/.test(searchable)) {
