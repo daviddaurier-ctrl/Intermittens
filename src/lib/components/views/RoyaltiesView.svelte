@@ -42,7 +42,13 @@
 
 	/** Promised (cession contract) vs paid (statements received), gross. */
 	function workBalance(work: AuthorWork) {
-		const paid = workTotals(appState.appData, work.id).gross;
+		// Statements paid for this work, plus its lines in multi-work statements (SACD…).
+		const fromLines = appState.appData.royalties
+			.filter((payment) => payment.status !== 'Attendu' && payment.workId !== work.id)
+			.flatMap((payment) => payment.lines ?? [])
+			.filter((line) => line.workId === work.id)
+			.reduce((total, line) => total + line.amount, 0);
+		const paid = Math.round((workTotals(appState.appData, work.id).gross + fromLines) * 100) / 100;
 		const promised = work.promisedAmount || 0;
 		const state = !promised ? 'unknown' : paid + 0.5 >= promised ? 'ok' : paid > 0 ? 'partial' : 'missing';
 		return { paid, promised, gap: Math.round((promised - paid) * 100) / 100, state };
@@ -53,6 +59,23 @@
 		missing: 'Rien reçu',
 		unknown: 'Montant promis inconnu'
 	};
+
+	const modeLabels: Record<string, string> = {
+		DIFF: 'Diffusion TV',
+		COPIE_PR: 'Copie privée',
+		TVR: 'Replay',
+		VAD: 'VOD',
+		SVOD: 'VOD abonnement'
+	};
+	function workBroadcasts(workId: string) {
+		return appState.appData.royalties
+			.flatMap((payment) =>
+				(payment.lines ?? [])
+					.filter((line) => line.workId === workId)
+					.map((line) => ({ ...line, paymentDate: payment.paymentDate, source: payment.source }))
+			)
+			.sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
+	}
 
 	function workTitle(workId: string) {
 		return appState.appData.works.find((work) => work.id === workId)?.title ?? '';
@@ -75,7 +98,8 @@
 			notes: '',
 			fileName: '',
 			storedName: '',
-			taxableAmount: 0
+			taxableAmount: 0,
+			lines: []
 		};
 		appState.appData.royalties.unshift(payment);
 		selectedPaymentId = payment.id;
@@ -437,6 +461,7 @@
 	<section class="panel">
 		{#if selectedWork}
 			{@const balance = workBalance(selectedWork)}
+			{@const broadcasts = workBroadcasts(selectedWork.id)}
 			<div class="panel-heading">
 				<h3>{selectedWork.title}</h3>
 				{#if selectedWorkTotals}
@@ -505,6 +530,37 @@
 					<span>Notes</span>
 					<textarea rows="2" bind:value={selectedWork.notes}></textarea>
 				</label>
+				{#if broadcasts.length}
+					<div class="wide">
+						<h4 class="broadcast-title">Diffusions ({broadcasts.length})</h4>
+						<div class="table-wrap">
+							<table class="royalties-table">
+								<thead>
+									<tr>
+										<th>Diffusion</th>
+										<th>Chaîne</th>
+										<th>Type</th>
+										<th class="num">Nb</th>
+										<th class="num">Droits</th>
+										<th>Versé le</th>
+									</tr>
+								</thead>
+								<tbody>
+									{#each broadcasts as line}
+										<tr>
+											<td>{line.period}</td>
+											<td>{line.broadcaster || '—'}{line.country && line.country !== 'FR' ? ` (${line.country})` : ''}</td>
+											<td>{modeLabels[line.mode] ?? line.mode}</td>
+											<td class="num">{line.count ? formatNumber(line.count, 0) : ''}</td>
+											<td class="num">{formatPreciseCurrency(line.amount)}</td>
+											<td>{formatDate(line.paymentDate)} · {line.source}</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					</div>
+				{/if}
 				<div class="button-row wide">
 					<button type="button" onclick={addPayment}>+ Versement pour cette œuvre</button>
 					<button class="danger" type="button" onclick={() => removeWork(selectedWork!)}>Supprimer</button>
@@ -517,6 +573,7 @@
 </section>
 
 <style>
+	.broadcast-title { margin: 6px 0 4px; font-size: 0.95rem; }
 	.work-line { display: inline-flex; align-items: center; gap: 6px; }
 	.balance-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; background: #c9b3c0; }
 	.balance-dot[data-state='ok'] { background: #2fb36b; }

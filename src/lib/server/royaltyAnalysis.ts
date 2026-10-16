@@ -1,4 +1,5 @@
 import { parseFrenchDate } from '$lib/date';
+import { analyzeSacdStatement } from '$lib/server/sacdAnalysis';
 import type { RoyaltyPayment } from '$lib/types';
 
 /**
@@ -39,6 +40,8 @@ export function analyzeRoyaltyStatement(
 	text: string,
 	fileName: string
 ): Omit<RoyaltyPayment, 'id' | 'storedName' | 'fileName'> | undefined {
+	const sacd = analyzeSacdStatement(text, fileName);
+	if (sacd) return sacd;
 	if (!isRoyaltyStatement(text)) return undefined;
 
 	const flat = flatten(text);
@@ -90,6 +93,7 @@ export function analyzeRoyaltyStatement(
 		contributionsWithheld: withheldContributions > 0,
 		status: 'Reçu',
 		notes,
-		taxableAmount: taxable ?? 0
+		taxableAmount: taxable ?? 0,
+		lines: []
 	};
 }

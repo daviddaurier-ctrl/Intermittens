@@ -405,7 +405,22 @@ function normalizeRoyalty(payment: Partial<RoyaltyPayment>): RoyaltyPayment {
 					.replace(',', '.')
 			),
 		fileName: cleanString(payment.fileName),
-		storedName: cleanString(payment.storedName)
+		storedName: cleanString(payment.storedName),
+		lines: Array.isArray(payment.lines)
+			? payment.lines.map((line) => ({
+					title: cleanString(line?.title),
+					workId: cleanString(line?.workId),
+					broadcaster: cleanString(line?.broadcaster),
+					period: cleanString(line?.period),
+					count: normalizeNumber(line?.count),
+					duration: cleanString(line?.duration),
+					mode: cleanString(line?.mode),
+					country: cleanString(line?.country),
+					amount: normalizeNumber(line?.amount),
+					societyFee: normalizeNumber(line?.societyFee),
+					sharePercent: normalizeNumber(line?.sharePercent)
+				}))
+			: []
 	};
 }
 

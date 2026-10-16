@@ -214,8 +214,31 @@ export async function syncWorks(
 		changed += 1;
 	}
 
-	// 2. Royalty statements: link each one to its work, or create the work.
+	// 2. Society statements (SACD…) list one line per broadcast: link each line to its work.
 	for (const payment of data.royalties) {
+		if (!payment.lines?.length) continue;
+		for (const line of payment.lines) {
+			if (line.workId && data.works.some((work) => work.id === line.workId)) continue;
+			if (!line.title) continue;
+			let work = findWork(line.title);
+			if (!work) {
+				work = newWork(prettyTitle(line.title), '');
+				work.society = payment.source;
+				data.works.unshift(work);
+			}
+			line.workId = work.id;
+			changed += 1;
+		}
+		const workIds = [...new Set(payment.lines.map((line) => line.workId).filter(Boolean))];
+		if (!payment.workId && workIds.length === 1) {
+			payment.workId = workIds[0];
+			changed += 1;
+		}
+	}
+
+	// 3. Producer statements: link each one to its work, or create the work.
+	for (const payment of data.royalties) {
+		if (payment.lines?.length) continue;
 		if (payment.workId && data.works.some((work) => work.id === payment.workId)) continue;
 		const title = workTitleFromRoyaltyLabel(payment.label);
 		if (!title) continue;

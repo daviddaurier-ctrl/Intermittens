@@ -152,6 +152,25 @@ export type AuthorWork = {
 	sourceDocumentIds: string[];
 };
 
+/** One line of a collecting society statement (SACD…): a broadcast or use of a work. */
+export type RoyaltyLine = {
+	title: string;
+	workId: string;
+	broadcaster: string;
+	/** "07/05/2023" or "15/04/2025-09/05/2025". */
+	period: string;
+	/** Broadcasts (or views for replay). */
+	count: number;
+	duration: string;
+	/** DIFF (TV broadcast), COPIE_PR (private copy), TVR (replay)… */
+	mode: string;
+	country: string;
+	/** Rights for this line, after the society's own fee. */
+	amount: number;
+	societyFee: number;
+	sharePercent: number;
+};
+
 export type RoyaltyPayment = {
 	id: string;
 	source: RoyaltySource;
@@ -170,6 +189,8 @@ export type RoyaltyPayment = {
 	/** Attached statement (stored like contract documents). */
 	fileName: string;
 	storedName: string;
+	/** Detail of the statement (broadcasts per work), when the statement lists them. */
+	lines: RoyaltyLine[];
 };
 
 /** A Congés Spectacles (Audiens) payment statement: holiday pay, taxable in the year paid. */
