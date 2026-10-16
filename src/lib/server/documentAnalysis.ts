@@ -944,7 +944,7 @@ function analyzeGhsPayroll(text: string) {
 }
 
 /**
- * Audiovisual payslips laid out like FAP / Futur Antérieur Production ("**** BRUT ****" line,
+ * Audiovisual payslips (Productions audiovisuelles layout: "**** BRUT ****" line,
  * "NET SOCIAL", period/cumulative "Brut … Heures …" block at the bottom).
  */
 /** Regex source matching a phrase even when the PDF text has spaces inside words ("n et soci a l"). */

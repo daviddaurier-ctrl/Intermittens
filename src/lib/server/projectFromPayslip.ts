@@ -10,8 +10,8 @@ function titleCase(value: string) {
 
 /**
  * Project name from the payroll "Analytique" line, e.g.
- * "Analytique : 203 CHANTS LIBRES 2026 Allègement…" → "Chants Libres 2026",
- * "Analytique : SP2609STOCKBERL STOCKHAUSEN / LE BALCON - … /2211 Dans votre…" → "Stockhausen / Le Balcon - …".
+ * "Analytique : 203 MON FESTIVAL 2026 Allègement…" → "Mon Festival 2026",
+ * "Analytique : SP2609ABCD MON PROJET / LIEU - … /1234 Dans votre…" → "Mon Projet / Lieu - …".
  */
 export function extractAnalytique(text: string) {
 	const flat = text.replace(/\s+/g, ' ');

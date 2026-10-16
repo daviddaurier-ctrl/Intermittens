@@ -2,7 +2,7 @@ import type { AppData } from '$lib/types';
 
 /**
  * Readable names for the copies kept in the app's storage folder, e.g.
- * "202607_Bulletin_cameralucida_montag-stockhausen.pdf".
+ * "202607_Bulletin_maprod_mon-projet.pdf".
  */
 
 function plain(value: string) {
