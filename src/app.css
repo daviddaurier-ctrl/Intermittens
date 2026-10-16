@@ -2213,3 +2213,12 @@ tr.selected {
 	gap: 8px;
 	align-items: center;
 }
+
+.declaration-first {
+	grid-column: 1 / -1;
+	border: 2px solid rgba(255, 61, 139, 0.32);
+}
+
+.declaration-nav button {
+	min-width: 34px;
+}

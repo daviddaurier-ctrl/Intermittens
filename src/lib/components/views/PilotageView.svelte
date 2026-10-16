@@ -15,10 +15,39 @@
 		day: 'numeric'
 	});
 
+	/**
+	 * Month to declare: before the 15th, the previous month (monthly update for France Travail);
+	 * from the 15th on, the current month.
+	 */
+	function computeDeclarationMonth(today = new Date()) {
+		const date = new Date(today.getFullYear(), today.getMonth() - (today.getDate() >= 15 ? 0 : 1), 1);
+		return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+	}
+
+	const defaultDeclarationMonth = computeDeclarationMonth();
+	let declarationMonth = $state(defaultDeclarationMonth);
+
+	function shiftDeclarationMonth(delta: number) {
+		const [year, month] = declarationMonth.split('-').map(Number);
+		const date = new Date(year, month - 1 + delta, 1);
+		declarationMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+	}
+
+	const monthNameFormatter = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' });
+
+	function monthName(month: string) {
+		const [year, monthNumber] = month.split('-').map(Number);
+		return monthNameFormatter.format(new Date(year, monthNumber - 1, 1));
+	}
+
+	function monthPreposition(month: string) {
+		return /^(?:avril|août|octobre)/.test(monthName(month)) ? "d'" : 'de ';
+	}
+
 	let declarationContracts = $derived.by(() =>
-		buildMonthlyContractBreakdown(appState.appData, appState.selectedMonth)
+		buildMonthlyContractBreakdown(appState.appData, declarationMonth)
 			.map((detail) => {
-				const period = declarationPeriod(detail.contract, appState.selectedMonth);
+				const period = declarationPeriod(detail.contract, declarationMonth);
 				const hasCachets = detail.cachets > 0;
 
 				return {
@@ -97,6 +126,65 @@
 </script>
 
 <section class="view-grid two-columns">
+	<section class="panel declaration-panel declaration-first">
+		<div class="panel-heading">
+			<h3>À déclarer pour le mois {monthPreposition(declarationMonth)}{monthName(declarationMonth)}</h3>
+			<div class="button-row declaration-nav">
+				<button type="button" title="Mois précédent" onclick={() => shiftDeclarationMonth(-1)}>‹</button>
+				{#if declarationMonth !== defaultDeclarationMonth}
+					<button type="button" onclick={() => (declarationMonth = defaultDeclarationMonth)}
+						>{monthName(defaultDeclarationMonth)}</button
+					>
+				{/if}
+				<button type="button" title="Mois suivant" onclick={() => shiftDeclarationMonth(1)}>›</button>
+			</div>
+		</div>
+
+		{#if declarationContracts.length}
+			<div class="declaration-list">
+				<div class="declaration-header">
+					<span>Structure</span>
+					<span>Période</span>
+					<span>Heures</span>
+					<span>Cachets</span>
+					<span>Salaire brut</span>
+				</div>
+				{#each declarationContracts as detail}
+					<button
+						type="button"
+						class="declaration-row"
+						onclick={() => openContract(detail.contract)}
+					>
+						<span class="company-list-title">
+							<span
+								class="company-swatch"
+								style={`--company-color: ${appState.companyColor(detail.contract.companyId)}`}
+								aria-hidden="true"
+							></span>
+							<strong>{appState.companyName(detail.contract.companyId)}</strong>
+						</span>
+						<span>
+							{formatDeclarationDay(detail.periodStart)} /
+							{formatDeclarationDay(detail.periodEnd)}
+						</span>
+						<span class="declaration-number">
+							{detail.declaredHours > 0
+								? `${formatNumber(detail.declaredHours, quantityDigits(detail.declaredHours))} h`
+								: '-'}
+						</span>
+						<span class="declaration-number">
+							{detail.declaredCachets > 0
+								? formatNumber(detail.declaredCachets, quantityDigits(detail.declaredCachets))
+								: '-'}
+						</span>
+						<strong class="declaration-number">{formatCurrency(detail.grossSalary)}</strong>
+					</button>
+				{/each}
+			</div>
+		{:else}
+			<p class="empty">Aucun contrat à déclarer sur {monthLabel(declarationMonth)}.</p>
+		{/if}
+	</section>
 	<section class="panel">
 		<div class="panel-heading">
 			<h3>Contrats récents</h3>
@@ -235,57 +323,6 @@
 		{/if}
 	</section>
 
-	<section class="panel declaration-panel">
-		<div class="panel-heading">
-			<h3>À déclarer pour {monthLabel(appState.selectedMonth)}</h3>
-			<span class="panel-subtitle">{monthLabel(appState.selectedMonth)}</span>
-		</div>
-
-		{#if declarationContracts.length}
-			<div class="declaration-list">
-				<div class="declaration-header">
-					<span>Structure</span>
-					<span>Période</span>
-					<span>Heures</span>
-					<span>Cachets</span>
-					<span>Salaire brut</span>
-				</div>
-				{#each declarationContracts as detail}
-					<button
-						type="button"
-						class="declaration-row"
-						onclick={() => openContract(detail.contract)}
-					>
-						<span class="company-list-title">
-							<span
-								class="company-swatch"
-								style={`--company-color: ${appState.companyColor(detail.contract.companyId)}`}
-								aria-hidden="true"
-							></span>
-							<strong>{appState.companyName(detail.contract.companyId)}</strong>
-						</span>
-						<span>
-							{formatDeclarationDay(detail.periodStart)} /
-							{formatDeclarationDay(detail.periodEnd)}
-						</span>
-						<span class="declaration-number">
-							{detail.declaredHours > 0
-								? `${formatNumber(detail.declaredHours, quantityDigits(detail.declaredHours))} h`
-								: '-'}
-						</span>
-						<span class="declaration-number">
-							{detail.declaredCachets > 0
-								? formatNumber(detail.declaredCachets, quantityDigits(detail.declaredCachets))
-								: '-'}
-						</span>
-						<strong class="declaration-number">{formatCurrency(detail.grossSalary)}</strong>
-					</button>
-				{/each}
-			</div>
-		{:else}
-			<p class="empty">Aucun contrat à déclarer sur {monthLabel(appState.selectedMonth)}.</p>
-		{/if}
-	</section>
 
 	<Calendar state={appState} panelClass="dashboard-calendar-panel" />
 </section>
