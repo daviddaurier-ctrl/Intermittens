@@ -70,7 +70,10 @@ const FOLDER_BY_TYPE: Record<string, string> = {
 	AEM: 'AEM',
 	Contrat: 'Contrats',
 	CongesSpectacles: 'Congés Spectacles',
-	NoteDroits: 'Décomptes de droits',
+	// Rights paid by producers under the cession contract.
+	NoteDroits: "Droits d'auteur",
+	// Broadcast/performance rights paid by the societies (SACD, SACEM, SCAM).
+	Diffusion: 'Droits de diffusion',
 	ARE: 'Notifications ARE',
 	Guso: 'GUSO',
 	Document: 'Autres'
@@ -165,10 +168,11 @@ export function planReadableNames(data: AppData): RenamePlan[] {
 	for (const payment of data.royalties) {
 		if (!payment.storedName) continue;
 		const project = payment.label.split('—').slice(1).join('—').trim();
+		const society = payment.source === 'SACD' || payment.source === 'SACEM' || payment.source === 'SCAM';
 		const wanted = build(
 			[
 				monthOf(payment.paymentDate),
-				'NoteDroits',
+				society ? 'Diffusion' : 'NoteDroits',
 				payment.payerName ? employerSlug(payment.payerName) : payment.source === 'SACEM' ? 'sacem' : payment.source === 'SACD' ? 'sacd' : '',
 				project ? projectSlug(project) : ''
 			],

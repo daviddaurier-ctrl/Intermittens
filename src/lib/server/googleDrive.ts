@@ -143,10 +143,13 @@ export const DOCUMENT_TYPE_FOLDERS = [
 	'AEM',
 	'Contrats',
 	'Congés Spectacles',
-	'Décomptes de droits',
+	"Droits d'auteur",
+	'Droits de diffusion',
 	'Notifications ARE',
 	'GUSO',
-	'Autres'
+	'Autres',
+	// Former folder of all royalty statements, still read so older copies are found.
+	'Décomptes de droits'
 ];
 
 const subfolderIds = new Map<string, string>();
