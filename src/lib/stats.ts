@@ -484,3 +484,81 @@ export function buildTimelineMonths(data: AppData) {
 
 	return Array.from(months).sort();
 }
+
+export type HoursOutlook = {
+	target: number;
+	periodStart: string;
+	anniversary: string;
+	/** Hours of contracts already started (worked). */
+	workedHours: number;
+	/** Hours of future contracts already in the app (signed or estimated). */
+	plannedHours: number;
+	remainingHours: number;
+	daysLeft: number;
+	monthsElapsed: number;
+	monthsLeft: number;
+	/** Hours per month needed from today to reach the target (planned contracts included). */
+	neededPerMonth: number;
+	/** Average hours per month so far. */
+	pacePerMonth: number;
+	/** Worked + planned + pace × months left, capped to the anniversary. */
+	projectedHours: number;
+	status: 'reached' | 'on-track' | 'tight' | 'late' | 'unknown';
+};
+
+/** Where you stand on the 507 hours before the anniversary date of the active period. */
+export function buildHoursOutlook(data: AppData, today = new Date()): HoursOutlook {
+	const target = data.settings.targetHours || 507;
+	const period = getActivePeriod(data);
+	const start = period ? getPeriodStart(period) : parseDate(data.settings.referenceStartDate);
+	const end = period ? getPeriodEnd(period) : undefined;
+	const now = clampDateToDay(today);
+	let workedHours = 0;
+	let plannedHours = 0;
+	for (const contract of data.contracts) {
+		const contractStart = parseDate(contract.startDate);
+		if (!contractStart) continue;
+		if (start && contractStart < start) continue;
+		if (end && contractStart > end) continue;
+		if (contractStart <= now) workedHours += contractRecognizedHours(contract);
+		else plannedHours += contractRecognizedHours(contract);
+	}
+	const dayMs = 86400000;
+	const monthDays = 30.44;
+	const daysLeft = end ? Math.max(0, Math.round((end.getTime() - now.getTime()) / dayMs)) : 0;
+	const daysElapsed = start ? Math.max(1, Math.round((now.getTime() - start.getTime()) / dayMs)) : 0;
+	const monthsLeft = daysLeft / monthDays;
+	const monthsElapsed = daysElapsed / monthDays;
+	const remainingHours = Math.max(0, target - workedHours - plannedHours);
+	const pacePerMonth = monthsElapsed ? workedHours / monthsElapsed : 0;
+	const neededPerMonth = monthsLeft > 0 ? remainingHours / monthsLeft : remainingHours;
+	const projectedHours = workedHours + plannedHours + pacePerMonth * monthsLeft;
+
+	let status: HoursOutlook['status'] = 'unknown';
+	if (!end || !start) status = 'unknown';
+	else if (workedHours + plannedHours >= target) status = 'reached';
+	else if (projectedHours >= target * 1.1) status = 'on-track';
+	else if (projectedHours >= target) status = 'tight';
+	else status = 'late';
+
+	const iso = (date?: Date) =>
+		date
+			? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+			: '';
+
+	return {
+		target,
+		periodStart: iso(start),
+		anniversary: iso(end),
+		workedHours: round(workedHours, 0),
+		plannedHours: round(plannedHours, 0),
+		remainingHours: round(remainingHours, 0),
+		daysLeft,
+		monthsElapsed: round(monthsElapsed, 1),
+		monthsLeft: round(monthsLeft, 1),
+		neededPerMonth: round(neededPerMonth, 0),
+		pacePerMonth: round(pacePerMonth, 0),
+		projectedHours: round(projectedHours, 0),
+		status
+	};
+}

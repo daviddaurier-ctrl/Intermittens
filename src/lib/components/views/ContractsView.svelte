@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { salaryFollowUp, workForProject } from '$lib/contractFollowUp';
+	import { formatPreciseCurrency as formatMoney } from '$lib/format';
 	import { statuses, type IntermittensState } from '$lib/app/state.svelte';
 	import DateInput from '$lib/components/DateInput.svelte';
 	import DocumentList from '$lib/components/DocumentList.svelte';
@@ -292,6 +294,22 @@
 				</button>
 			</div>
 
+			{@const linkedWork = workForProject(appState.appData, appState.selectedContract.projectId)}
+			{@const followUp = linkedWork ? salaryFollowUp(appState.appData, linkedWork) : undefined}
+			{#if followUp && !/technicien/i.test(appState.selectedContract.employmentStatus)}
+				<p class="contract-followup" data-state={followUp.state}>
+					Contrat de réalisation « {linkedWork?.title} » :
+					{followUp.promisedCachets ? `${followUp.promisedCachets} cachets, ` : ''}{formatMoney(followUp.promisedSalary)} prévus ·
+					{followUp.promisedCachets ? `${followUp.paidCachets} cachets, ` : ''}{formatMoney(followUp.paidSalary)} payés
+					{#if followUp.state === 'partial'}
+						· reste {followUp.promisedCachets && followUp.remainingCachets > 0 ? `${followUp.remainingCachets} cachets, ` : ''}{formatMoney(followUp.remainingSalary)}
+					{:else if followUp.state === 'over'}
+						· {formatMoney(-followUp.remainingSalary)} de plus que prévu
+					{:else}
+						· tout est payé
+					{/if}
+				</p>
+			{/if}
 			<div class="status-row">
 				{#each statuses as status}
 					<button
@@ -454,3 +472,9 @@
 		{/if}
 	</section>
 </section>
+
+<style>
+	.contract-followup { margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; font-size: 0.88rem; background: rgba(47, 179, 107, 0.12); }
+	.contract-followup[data-state='partial'] { background: rgba(245, 158, 11, 0.15); }
+	.contract-followup[data-state='over'] { background: rgba(91, 123, 224, 0.14); }
+</style>

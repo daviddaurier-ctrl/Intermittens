@@ -138,6 +138,38 @@ export function parseCessionContract(text: string): ParsedCession | undefined {
 	return { title: title.trim(), promised: promised ?? 0, how, isAvenant };
 }
 
+export type SalaryTerms = { cachets: number; salary: number; how: string };
+
+/**
+ * Salary promised by the contract: "SALAIRES (montants bruts) 9 cachets à 250 € …" (schedule),
+ * else "un salaire brut de 1 150 €" / "Un salaire d'un montant brut de 750 €" (added up).
+ */
+export function parseSalaryTerms(text: string): SalaryTerms | undefined {
+	const flat = flatten(text);
+	const segment = flat.match(/salaires?\s*\(montants? bruts?\)(.{0,400}?)(?:annexe|$)/i)?.[1] ?? '';
+	const lines = [
+		...segment.matchAll(
+			/(\d+)\s+cachets?\s+(?:a|à)\s+([0-9]{1,3}(?:[\s.][0-9]{3})*(?:,[0-9]{1,2})?)\s*(?:€|euros?)/gi
+		)
+	];
+	if (lines.length) {
+		const cachets = lines.reduce((total, match) => total + Number(match[1]), 0);
+		const salary = lines.reduce((total, match) => total + Number(match[1]) * (toAmount(match[2]) ?? 0), 0);
+		return { cachets, salary: Math.round(salary * 100) / 100, how: 'échéancier du contrat' };
+	}
+	const amounts = [
+		...flat.matchAll(
+			new RegExp(String.raw`un salaire (?:d\s*un montant )?brut de\s*${AMOUNT}`, 'gi')
+		)
+	]
+		.map((match) => toAmount(match[1]))
+		.filter((value): value is number => value !== undefined);
+	if (amounts.length) {
+		return { cachets: 0, salary: amounts.reduce((total, value) => total + value, 0), how: 'salaire prévu au contrat' };
+	}
+	return undefined;
+}
+
 /** "Décompte n° 003 — CONTRE TENORS" → "CONTRE TENORS". */
 export function workTitleFromRoyaltyLabel(label: string) {
 	const part = label.split('—').slice(1).join('—').trim();
@@ -158,7 +190,12 @@ function newWork(title: string, producer: string): AuthorWork {
 		producer,
 		promisedAmount: 0,
 		promisedNotes: '',
-		sourceDocumentIds: []
+		sourceDocumentIds: [],
+		projectId: '',
+		promisedSalary: 0,
+		promisedCachets: 0,
+		salaryNotes: '',
+		salaryChecked: false
 	};
 }
 
@@ -171,6 +208,17 @@ export function prettyTitle(title: string) {
 		.replace(/(^|[\s\-/'(])(\p{L}+)/gu, (_, sep, word: string) =>
 			sep + (sep && small.has(word) ? word : word[0].toUpperCase() + word.slice(1))
 		);
+}
+
+function applySalaryTerms(work: AuthorWork, text: string, isAvenant: boolean, projectId: string) {
+	if (projectId && !work.projectId) work.projectId = projectId;
+	const terms = parseSalaryTerms(text);
+	if (terms && (isAvenant || !work.promisedSalary)) {
+		work.promisedSalary = terms.salary;
+		work.promisedCachets = terms.cachets;
+		work.salaryNotes = `${isAvenant ? 'Avenant' : 'Contrat'} (${terms.how})`;
+	}
+	work.salaryChecked = true;
 }
 
 export async function syncWorks(
@@ -216,7 +264,29 @@ export async function syncWorks(
 			work.promisedAmount = parsed.promised;
 			work.promisedNotes = `${parsed.isAvenant ? 'Avenant' : 'Contrat'} (${parsed.how}) · ${document.originalFileName || document.fileName}`;
 		}
+		applySalaryTerms(work, text, parsed?.isAvenant ?? false, contract?.projectId ?? '');
 		work.sourceDocumentIds.push(document.id);
+		changed += 1;
+	}
+
+	// Works read before the salary terms were stored: read their contracts again once.
+	for (const work of data.works) {
+		if (work.salaryChecked || !work.sourceDocumentIds.length) continue;
+		const documents = work.sourceDocumentIds
+			.map((id) => data.documents.find((document) => document.id === id))
+			.filter((document): document is ContractDocument => Boolean(document))
+			.sort((a, b) => a.uploadedAt.localeCompare(b.uploadedAt));
+		for (const document of documents) {
+			let text = document.extractedTextPreview;
+			try {
+				text = (await readFullText(document)) || text;
+			} catch {
+				// keep the preview
+			}
+			const contract = data.contracts.find((item) => item.id === document.contractId);
+			applySalaryTerms(work, text, /\bavenant n/i.test(flatten(text)), contract?.projectId ?? '');
+		}
+		work.salaryChecked = true;
 		changed += 1;
 	}
 

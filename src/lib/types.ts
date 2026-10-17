@@ -150,6 +150,13 @@ export type AuthorWork = {
 	promisedNotes: string;
 	/** Contract documents already read for this work (so they are not parsed again). */
 	sourceDocumentIds: string[];
+	/** Project of the shooting contracts (payslips) linked to this work. */
+	projectId: string;
+	/** Salary promised by the contract (gross) and number of cachets (0 = unknown). */
+	promisedSalary: number;
+	promisedCachets: number;
+	salaryNotes: string;
+	salaryChecked: boolean;
 };
 
 /** One line of a collecting society statement (SACD…): a broadcast or use of a work. */

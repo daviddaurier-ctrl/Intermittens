@@ -14,6 +14,7 @@
 		royaltyYears,
 		workTotals
 	} from '$lib/royalties';
+	import { salaryFollowUp } from '$lib/contractFollowUp';
 	import type { AuthorWork, RoyaltyPayment, RoyaltyStatus, WorkKind } from '$lib/types';
 
 	let { state: appState }: { state: IntermittensState } = $props();
@@ -162,7 +163,12 @@
 			producer: '',
 			promisedAmount: 0,
 			promisedNotes: '',
-			sourceDocumentIds: []
+			sourceDocumentIds: [],
+			projectId: '',
+			promisedSalary: 0,
+			promisedCachets: 0,
+			salaryNotes: '',
+			salaryChecked: true
 		};
 		appState.appData.works.unshift(work);
 		selectedWorkId = work.id;
@@ -522,6 +528,7 @@
 		{#if selectedWork}
 			{@const balance = workBalance(selectedWork)}
 			{@const broadcasts = workBroadcasts(selectedWork.id)}
+			{@const salary = salaryFollowUp(appState.appData, selectedWork)}
 			<div class="panel-heading">
 				<h3>{selectedWork.title}</h3>
 				{#if selectedWorkTotals}
@@ -541,6 +548,26 @@
 			</div>
 			{#if selectedWork.promisedNotes}
 				<p class="hint">Montant promis lu dans : {selectedWork.promisedNotes}</p>
+			{/if}
+			{#if salary}
+				<h4 class="broadcast-title">Salaire de réalisation (bulletins)</h4>
+				<div class="work-balance" data-state={salary.state === 'ok' ? 'ok' : salary.state === 'over' ? 'partial' : 'missing'}>
+					<div>
+						<span>Prévu au contrat</span>
+						<strong>{formatPreciseCurrency(salary.promisedSalary)}</strong>
+						{#if salary.promisedCachets}<small>{salary.promisedCachets} cachets</small>{/if}
+					</div>
+					<div>
+						<span>Payé ({salary.contracts} bulletin{salary.contracts > 1 ? 's' : ''})</span>
+						<strong>{formatPreciseCurrency(salary.paidSalary)}</strong>
+						{#if salary.promisedCachets}<small>{salary.paidCachets} cachets</small>{/if}
+					</div>
+					<div>
+						<span>{salary.state === 'over' ? 'Payé en plus' : salary.state === 'ok' ? 'Écart' : 'Reste à venir'}</span>
+						<strong>{formatPreciseCurrency(Math.abs(salary.remainingSalary))}</strong>
+						{#if salary.promisedCachets && salary.remainingCachets}<small>{Math.abs(salary.remainingCachets)} cachets</small>{/if}
+					</div>
+				</div>
 			{/if}
 			{:else}
 				<div class="work-balance" data-state="ok">

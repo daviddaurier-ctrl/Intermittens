@@ -136,6 +136,53 @@
 			</table>
 		</div>
 
+		<h3 class="tax-subtitle">Cases de la déclaration n° 2042</h3>
+		<div class="table-wrap">
+			<table class="royalties-table tax-boxes">
+				<thead>
+					<tr><th>Case</th><th>Quoi</th><th class="num">Montant</th><th>À faire</th></tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><strong>1AJ</strong></td>
+						<td>Salaires (bulletins) et indemnités Congés Spectacles</td>
+						<td class="num">{formatCurrency(summary.salaryTaxable + summary.congesSpectacles)}</td>
+						<td>Préremplie : compare et corrige si besoin</td>
+					</tr>
+					<tr>
+						<td><strong>1AP</strong></td>
+						<td>Allocations chômage France Travail</td>
+						<td class="num">{formatCurrency(summary.unemployment)}</td>
+						<td>Préremplie : compare{summary.unemploymentIsEstimate ? ' (montant estimé ici)' : ''}</td>
+					</tr>
+					<tr class:muted-row={!summary.royaltiesTaxable}>
+						<td><strong>1GF</strong></td>
+						<td>Droits d'auteur : producteurs {formatCurrency(summary.royaltiesTaxableDirect)} + diffusion {formatCurrency(summary.royaltiesTaxableSocieties)}</td>
+						<td class="num">{formatCurrency(summary.royaltiesTaxable)}</td>
+						<td><strong>Pas préremplie : à saisir toi-même</strong></td>
+					</tr>
+					<tr class:muted-row={!summary.bestIsActual}>
+						<td><strong>1AK</strong></td>
+						<td>Frais réels</td>
+						<td class="num">{summary.bestIsActual ? formatCurrency(summary.actualExpenses) : '—'}</td>
+						<td>{summary.bestIsActual ? 'À saisir, avec le détail des frais' : 'Rien à saisir : le forfait 10 % est appliqué tout seul'}</td>
+					</tr>
+					<tr>
+						<td><strong>8HV</strong></td>
+						<td>Prélèvement à la source déjà payé</td>
+						<td class="num">{summary.withheldAtSource ? formatCurrency(summary.withheldAtSource) : '—'}</td>
+						<td>Préremplie</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+		<p class="hint">
+			Cases de la déclaration 2026 (revenus 2025), case du déclarant 1. En 1GF, reporte le « net
+			imposable » des décomptes (c'est celui que l'app additionne). Les droits d'auteur peuvent aussi
+			être déclarés en BNC (déclaration 2042-C-PRO) : c'est une option, valable 3 ans. Vérifie toujours
+			sur impots.gouv.fr, les cases peuvent changer d'une année à l'autre.
+		</p>
+
 		<div class="declaration-checklist">
 			{#if summary.contractsWithoutTaxable}
 				<p class="alert">

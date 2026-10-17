@@ -548,3 +548,37 @@ export async function driveOcrImage(content: Buffer, mimeType: string) {
 		await driveFetch(`${API}/files/${id}`, { method: 'DELETE' }).catch(() => undefined);
 	}
 }
+
+const BACKUP_FOLDER = 'Sauvegardes';
+const BACKUPS_KEPT = 30;
+let lastBackupDay = '';
+
+/**
+ * Once a day, before the data file is overwritten, keeps a dated copy of it in
+ * InterMittens/Sauvegardes (intermittens-AAAA-MM-JJ.json) and keeps the last 30 copies.
+ */
+export async function driveDailyBackup(dataFileName: string) {
+	const day = new Date().toISOString().slice(0, 10);
+	if (lastBackupDay === day) return;
+	const backupName = `${BACKUP_FOLDER}/intermittens-${day}.json`;
+	if (await fileId('documents', backupName)) {
+		lastBackupDay = day;
+		return;
+	}
+	const current = await driveReadFile('root', dataFileName);
+	if (!current) return;
+	await driveWriteFile('documents', backupName, current, 'application/json');
+	lastBackupDay = day;
+
+	const folder = await subfolderId(BACKUP_FOLDER);
+	const backups = (await listFolderFileNames(folder))
+		.filter((file) => /^intermittens-\d{4}-\d{2}-\d{2}\.json$/.test(file.name))
+		.sort((a, b) => b.name.localeCompare(a.name));
+	for (const old of backups.slice(BACKUPS_KEPT)) {
+		await driveFetch(`${API}/files/${old.id}`, {
+			method: 'PATCH',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ trashed: true })
+		});
+	}
+}

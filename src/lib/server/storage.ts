@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { defaultCompanyColor, normalizeCompanyColor } from '$lib/companyColors';
 import {
 	DOCUMENT_TYPE_FOLDERS,
+	driveDailyBackup,
 	driveEnabled,
 	driveListFiles,
 	driveReadFile,
@@ -378,7 +379,12 @@ function normalizeWork(work: Partial<AuthorWork>): AuthorWork {
 		promisedNotes: cleanString(work.promisedNotes),
 		sourceDocumentIds: Array.isArray(work.sourceDocumentIds)
 			? work.sourceDocumentIds.map(cleanString).filter(Boolean)
-			: []
+			: [],
+		projectId: cleanString(work.projectId),
+		promisedSalary: normalizeNumber(work.promisedSalary),
+		promisedCachets: normalizeNumber(work.promisedCachets),
+		salaryNotes: cleanString(work.salaryNotes),
+		salaryChecked: work.salaryChecked === true
 	};
 }
 
@@ -573,6 +579,12 @@ export function normalizeData(input: Partial<AppData>): AppData {
 
 async function writeJson(data: AppData) {
 	if (useDrive()) {
+		try {
+			await driveDailyBackup(dataFileName);
+		} catch (cause) {
+			// A failed backup must never block saving.
+			console.error('Sauvegarde quotidienne impossible', cause);
+		}
 		await driveWriteFile(
 			'root',
 			dataFileName,

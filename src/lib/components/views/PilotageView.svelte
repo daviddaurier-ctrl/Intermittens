@@ -5,10 +5,19 @@
 	import { formatCurrency, formatDate, formatNumber } from '$lib/format';
 	import DriveImport from '$lib/components/DriveImport.svelte';
 	import ImportFeedback from '$lib/components/ImportFeedback.svelte';
-	import { buildMonthlyContractBreakdown, contractRecognizedHours, monthLabel } from '$lib/stats';
+	import { buildHoursOutlook, buildMonthlyContractBreakdown, contractRecognizedHours, monthLabel } from '$lib/stats';
 	import type { Contract } from '$lib/types';
 
 	let { state: appState }: { state: IntermittensState } = $props();
+
+	let outlook = $derived(buildHoursOutlook(appState.appData));
+	const outlookText: Record<string, string> = {
+		reached: 'Objectif atteint avec les contrats connus',
+		'on-track': 'Au rythme actuel, tu y arrives largement',
+		tight: 'Au rythme actuel, ça passe juste',
+		late: 'Au rythme actuel, il manquera des heures',
+		unknown: 'Renseigne ta période ARE (onglet Intermittence)'
+	};
 
 	const declarationDayFormatter = new Intl.DateTimeFormat('fr-FR', {
 		weekday: 'long',
@@ -185,6 +194,25 @@
 			<p class="empty">Aucun contrat à déclarer sur {monthLabel(declarationMonth)}.</p>
 		{/if}
 	</section>
+	<section class="panel hours-outlook" data-status={outlook.status}>
+		<div class="panel-heading">
+			<h3>Objectif {outlook.target} h</h3>
+			{#if outlook.anniversary}<span class="outlook-date">date anniversaire {formatDate(outlook.anniversary)}</span>{/if}
+		</div>
+		<div class="outlook-bar" aria-hidden="true">
+			<span class="worked" style={`width: ${Math.min(100, (outlook.workedHours / outlook.target) * 100)}%`}></span>
+			<span class="planned" style={`width: ${Math.min(100 - Math.min(100, (outlook.workedHours / outlook.target) * 100), (outlook.plannedHours / outlook.target) * 100)}%`}></span>
+		</div>
+		<p class="outlook-status"><span class="outlook-dot"></span>{outlookText[outlook.status]}</p>
+		<div class="outlook-grid">
+			<div><span>Faites</span><strong>{formatNumber(outlook.workedHours, 0)} h</strong></div>
+			<div><span>Prévues</span><strong>{formatNumber(outlook.plannedHours, 0)} h</strong></div>
+			<div><span>Reste à trouver</span><strong>{formatNumber(outlook.remainingHours, 0)} h</strong><small>≈ {formatNumber(Math.ceil(outlook.remainingHours / 12), 0)} cachets</small></div>
+			<div><span>Temps restant</span><strong>{formatNumber(outlook.monthsLeft, 1)} mois</strong><small>{outlook.daysLeft} jours</small></div>
+			<div><span>Rythme nécessaire</span><strong>{formatNumber(outlook.neededPerMonth, 0)} h / mois</strong></div>
+			<div><span>Ton rythme</span><strong>{formatNumber(outlook.pacePerMonth, 0)} h / mois</strong><small>projection {formatNumber(outlook.projectedHours, 0)} h</small></div>
+		</div>
+	</section>
 	<section class="panel">
 		<div class="panel-heading">
 			<h3>Contrats récents</h3>
@@ -326,3 +354,19 @@
 
 	<Calendar state={appState} panelClass="dashboard-calendar-panel" />
 </section>
+
+<style>
+	.hours-outlook .outlook-date { font-size: 0.82rem; opacity: 0.75; }
+	.outlook-bar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: rgba(255, 61, 139, 0.1); margin: 4px 0 8px; }
+	.outlook-bar .worked { background: linear-gradient(90deg, #ff5fa2, #ff3d8b); }
+	.outlook-bar .planned { background: repeating-linear-gradient(45deg, rgba(255, 61, 139, 0.45) 0 6px, rgba(255, 61, 139, 0.2) 6px 12px); }
+	.outlook-status { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-weight: 600; }
+	.outlook-dot { width: 10px; height: 10px; border-radius: 50%; background: #c9b3c0; }
+	.hours-outlook[data-status='reached'] .outlook-dot, .hours-outlook[data-status='on-track'] .outlook-dot { background: #2fb36b; }
+	.hours-outlook[data-status='tight'] .outlook-dot { background: #f59e0b; }
+	.hours-outlook[data-status='late'] .outlook-dot { background: #e5383b; }
+	.outlook-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+	.outlook-grid > div { display: grid; gap: 2px; padding: 8px 10px; border-radius: 10px; background: rgba(255, 61, 139, 0.07); }
+	.outlook-grid span, .outlook-grid small { font-size: 0.78rem; opacity: 0.75; }
+	@media (max-width: 640px) { .outlook-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+</style>
