@@ -122,13 +122,14 @@
 	const declarationSocieties = ['SACEM', 'SACD', 'SCAM'] as const;
 	function declarationState(work: AuthorWork) {
 		const list = work.declarations ?? [];
-		if (!list.length) return 'none';
+		if (!list.length) return work.format === 'Autre' ? 'other' : 'none';
 		if (list.some((item) => item.status === 'À déclarer')) return 'todo';
 		if (list.every((item) => item.status === 'Confirmée')) return 'confirmed';
 		return 'sent';
 	}
 	const declarationLabel: Record<string, string> = {
 		none: 'Aucune déclaration notée',
+		other: 'Autre : pas de déclaration',
 		todo: 'À déclarer',
 		sent: 'Déclarée, en attente',
 		confirmed: 'Déclarée et confirmée'
@@ -572,7 +573,8 @@
 							class="declaration-badge"
 							data-state={declarationState(work)}
 							title={`${declarationLabel[declarationState(work)]}${(work.declarations ?? []).length ? ' : ' + work.declarations.map((item) => `${item.society} (${item.status})`).join(', ') : ''}`}
-							>{(work.declarations ?? []).map((item) => item.society).join('·') || '?'}</span
+							>{(work.declarations ?? []).map((item) => item.society).join('·') ||
+								(work.format === 'Autre' ? 'Autre' : '?')}</span
 						>
 						{#if family === 'auteur'}
 							<span class="balance-dot" data-state={balance.state} title={balanceLabel[balance.state]}></span>
@@ -708,7 +710,7 @@
 						>
 							<option value="">Non précisé</option>
 							{#each workFormats as format}
-								<option value={format.value}>{format.label} → {format.society}</option>
+								<option value={format.value}>{format.label}{format.society ? ` → ${format.society}` : ''}</option>
 							{/each}
 						</select>
 					</label>

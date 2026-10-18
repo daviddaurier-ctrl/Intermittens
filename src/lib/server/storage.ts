@@ -386,7 +386,7 @@ function normalizeWork(work: Partial<AuthorWork>): AuthorWork {
 		promisedCachets: normalizeNumber(work.promisedCachets),
 		salaryNotes: cleanString(work.salaryNotes),
 		salaryChecked: work.salaryChecked === true,
-		format: (['Documentaire', 'Mise en scène', 'Concert'] as const).includes(work.format as never)
+		format: (['Documentaire', 'Mise en scène', 'Concert', 'Autre'] as const).includes(work.format as never)
 			? (work.format as AuthorWork['format'])
 			: '',
 		declarations: Array.isArray(work.declarations)

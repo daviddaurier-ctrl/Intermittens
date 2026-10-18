@@ -134,7 +134,7 @@ export type WorkKind = 'Musique' | 'Spectacle vivant' | 'Audiovisuel' | 'Texte' 
 
 export type DeclarationStatus = 'À déclarer' | 'Déclarée' | 'Confirmée';
 /** What the film is: decides the society (documentary → SCAM, staged → SACD, concert → SACEM). */
-export type WorkFormat = 'Documentaire' | 'Mise en scène' | 'Concert';
+export type WorkFormat = 'Documentaire' | 'Mise en scène' | 'Concert' | 'Autre';
 
 /** Registration of a work with a collecting society (SACEM, SACD, SCAM). */
 export type WorkDeclaration = {

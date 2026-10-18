@@ -6,10 +6,12 @@ import type { RoyaltySource, WorkFormat } from '$lib/types';
  * - a staged show (opera, theatre, dance, any mise en scène), filmed or created → SACD;
  * - a filmed concert with no staging → SACEM.
  */
-export const workFormats: { value: WorkFormat; label: string; society: RoyaltySource }[] = [
+export const workFormats: { value: WorkFormat; label: string; society: RoyaltySource | '' }[] = [
 	{ value: 'Documentaire', label: 'Documentaire', society: 'SCAM' },
 	{ value: 'Mise en scène', label: 'Spectacle mis en scène (opéra, théâtre, danse…)', society: 'SACD' },
-	{ value: 'Concert', label: 'Concert filmé sans mise en scène', society: 'SACEM' }
+	{ value: 'Concert', label: 'Concert filmé sans mise en scène', society: 'SACEM' },
+	// Not broadcast / nothing to declare.
+	{ value: 'Autre', label: 'Autre (pas de déclaration)', society: '' }
 ];
 
 export function societyForFormat(format: WorkFormat | '' | undefined): RoyaltySource | '' {
