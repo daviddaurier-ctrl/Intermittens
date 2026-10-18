@@ -25,7 +25,10 @@ function parseMovements(text: string): Movement[] {
 }
 
 export function isSacemAccountStatement(text: string) {
-	return /mon relev[ée] de compte/i.test(text) && /\bREPARTITION\s+\d+/i.test(text);
+	return (
+		/mon relev[ée] de compte|date\s*,\s*libell[ée]\s*,\s*mouvements/i.test(text) &&
+		/\bREPARTITION\s+\d+/i.test(text)
+	);
 }
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
