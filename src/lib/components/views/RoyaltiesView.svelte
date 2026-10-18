@@ -15,6 +15,7 @@
 		workTotals
 	} from '$lib/royalties';
 	import { salaryFollowUp } from '$lib/contractFollowUp';
+	import { societyForFormat, workFormats } from '$lib/workFormat';
 	import type {
 		AuthorWork,
 		DeclarationStatus,
@@ -132,6 +133,23 @@
 		sent: 'Déclarée, en attente',
 		confirmed: 'Déclarée et confirmée'
 	};
+	/** Changing the type of film moves the declarations not sent yet to the right society. */
+	function setFormat(work: AuthorWork, format: AuthorWork['format']) {
+		work.format = format;
+		const society = societyForFormat(format);
+		if (society) {
+			const pending = (work.declarations ?? []).filter((item) => item.status === 'À déclarer');
+			if (pending.length) for (const item of pending) item.society = society;
+			else if (!(work.declarations ?? []).some((item) => item.society === society)) {
+				work.declarations = [
+					...(work.declarations ?? []),
+					{ society, status: 'À déclarer', date: '', reference: '', notes: '' }
+				];
+			}
+		}
+		appState.touch();
+	}
+
 	function addDeclaration(work: AuthorWork) {
 		work.declarations = [
 			...(work.declarations ?? []),
@@ -205,7 +223,8 @@
 			promisedCachets: 0,
 			salaryNotes: '',
 			salaryChecked: true,
-			declarations: []
+			declarations: [],
+			format: ''
 		};
 		appState.appData.works.unshift(work);
 		selectedWorkId = work.id;
@@ -681,6 +700,18 @@
 				</label>
 				<div class="wide declarations">
 					<h4 class="broadcast-title">Déclarations aux sociétés d’auteurs</h4>
+					<label class="format-select">
+						<span>Type de film</span>
+						<select
+							value={selectedWork.format}
+							onchange={(event) => setFormat(selectedWork!, (event.currentTarget as HTMLSelectElement).value as AuthorWork['format'])}
+						>
+							<option value="">Non précisé</option>
+							{#each workFormats as format}
+								<option value={format.value}>{format.label} → {format.society}</option>
+							{/each}
+						</select>
+					</label>
 					{#each selectedWork.declarations ?? [] as declaration, index}
 						<div class="declaration-row" data-status={declaration.status}>
 							<select bind:value={declaration.society} onchange={() => appState.touch()}>
@@ -762,6 +793,8 @@
 	.declaration-row { display: grid; grid-template-columns: 90px 120px 140px 1fr 36px; gap: 6px; align-items: center; margin-bottom: 6px; }
 	.declaration-row small { grid-column: 1 / -1; opacity: 0.7; }
 	.declaration-hint { margin: 0 0 8px; }
+	.format-select { display: grid; gap: 4px; margin-bottom: 8px; }
+	.format-select span { font-size: 0.8rem; opacity: 0.75; }
 	@media (max-width: 640px) { .declaration-row { grid-template-columns: 1fr 1fr; } }
 	.broadcast-title { margin: 6px 0 4px; font-size: 0.95rem; }
 	.work-line { display: inline-flex; align-items: center; gap: 6px; }

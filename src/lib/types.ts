@@ -133,6 +133,8 @@ export type RoyaltyStatus = 'Attendu' | 'Reçu' | 'Déclaré';
 export type WorkKind = 'Musique' | 'Spectacle vivant' | 'Audiovisuel' | 'Texte' | 'Autre';
 
 export type DeclarationStatus = 'À déclarer' | 'Déclarée' | 'Confirmée';
+/** What the film is: decides the society (documentary → SCAM, staged → SACD, concert → SACEM). */
+export type WorkFormat = 'Documentaire' | 'Mise en scène' | 'Concert';
 
 /** Registration of a work with a collecting society (SACEM, SACD, SCAM). */
 export type WorkDeclaration = {
@@ -172,6 +174,7 @@ export type AuthorWork = {
 	salaryChecked: boolean;
 	/** Declarations of the work to the societies. */
 	declarations: WorkDeclaration[];
+	format: WorkFormat | '';
 };
 
 /** One line of a collecting society statement (SACD…): a broadcast or use of a work. */

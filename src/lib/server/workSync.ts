@@ -1,4 +1,5 @@
 import { repairSacdLine } from '$lib/server/sacdAnalysis';
+import { guessWorkFormat, societyForFormat } from '$lib/workFormat';
 import type { AppData, AuthorWork, ContractDocument } from '$lib/types';
 
 /**
@@ -196,7 +197,8 @@ function newWork(title: string, producer: string): AuthorWork {
 		promisedCachets: 0,
 		salaryNotes: '',
 		salaryChecked: false,
-		declarations: []
+		declarations: [],
+		format: ''
 	};
 }
 
@@ -220,21 +222,14 @@ function applySalaryTerms(work: AuthorWork, text: string, isAvenant: boolean, pr
 		work.salaryNotes = `${isAvenant ? 'Avenant' : 'Contrat'} (${terms.how})`;
 	}
 	work.salaryChecked = true;
-	// Which society the contract points to (the author still has to declare the work there).
-	if (!work.declarations?.length) {
-		const flat = flatten(text).toLowerCase();
-		const society = /repertoire de la scam|\bscam\b/.test(flat)
-			? 'SCAM'
-			: /membre de la sacem|\bsacem\b/.test(flat)
-				? 'SACEM'
-				: /\bsacd\b/.test(flat)
-					? 'SACD'
-					: '';
-		if (society) {
-			work.declarations = [
-				{ society, status: 'À déclarer', date: '', reference: '', notes: 'Société indiquée par le contrat' }
-			];
-		}
+	// The society depends on what the film is (documentary, staged show, concert), not on
+	// the contract: guess the format from the contract text, the author can change it.
+	if (!work.format) work.format = guessWorkFormat(`${work.title} ${text}`);
+	const society = societyForFormat(work.format);
+	if (!work.declarations?.length && society) {
+		work.declarations = [
+			{ society, status: 'À déclarer', date: '', reference: '', notes: `Déduit du type de film (${work.format}), à vérifier` }
+		];
 	}
 }
 
