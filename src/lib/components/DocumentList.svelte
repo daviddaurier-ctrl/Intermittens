@@ -17,7 +17,7 @@
 					{kind}
 					<input
 						type="file"
-						accept=".pdf,.txt,.csv,.md,application/pdf,text/*"
+						accept=".pdf,.txt,.csv,.md,.xlsx,.xls,.ods,application/pdf,text/*"
 						onchange={(event) => {
 							event.stopPropagation();
 							state.uploadDocument(contract, event, kind);

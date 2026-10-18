@@ -355,7 +355,7 @@ export async function exchangeAuthCode(code: string, redirectUri: string) {
 export type DriveImportFile = { id: string; name: string; mimeType: string; size: number };
 
 const IMPORTABLE_MIME =
-	/^(application\/pdf|text\/plain|text\/csv|text\/markdown|image\/(?:jpeg|png|heic|heif|webp|gif))$/;
+	/^(application\/pdf|text\/plain|text\/csv|text\/markdown|image\/(?:jpeg|png|heic|heif|webp|gif)|application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet|application\/vnd\.ms-excel|application\/vnd\.oasis\.opendocument\.spreadsheet)$/;
 const IMAGE_MIME = /^image\//;
 /** Images Drive's OCR can't take as is (iPhone HEIC…) or too big for Vercel: use a JPEG rendition. */
 const NEEDS_JPEG = /^image\/(?:heic|heif|webp)$/;
@@ -580,5 +580,38 @@ export async function driveDailyBackup(dataFileName: string) {
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({ trashed: true })
 		});
+	}
+}
+
+/**
+ * Spreadsheets (.xlsx, .xls, .ods — e.g. the SACEM "relevé de compte"): converted to a temporary
+ * Google Sheet, exported as CSV (first sheet), then deleted.
+ */
+export async function driveSpreadsheetToCsv(content: Buffer, mimeType: string) {
+	const boundary = `intermimi_${Math.random().toString(36).slice(2)}`;
+	const metadata = {
+		name: 'intermimi-sheet-temp',
+		mimeType: 'application/vnd.google-apps.spreadsheet',
+		parents: [await rootFolderId()]
+	};
+	const body = Buffer.concat([
+		Buffer.from(
+			`--${boundary}\r\ncontent-type: application/json; charset=UTF-8\r\n\r\n` +
+				`${JSON.stringify(metadata)}\r\n--${boundary}\r\ncontent-type: ${mimeType}\r\n\r\n`
+		),
+		content,
+		Buffer.from(`\r\n--${boundary}--`)
+	]);
+	const created = await driveFetch(`${UPLOAD_API}/files?uploadType=multipart&fields=id`, {
+		method: 'POST',
+		headers: { 'content-type': `multipart/related; boundary=${boundary}` },
+		body
+	});
+	const { id } = (await created.json()) as { id: string };
+	try {
+		const exported = await driveFetch(`${API}/files/${id}/export?mimeType=${encodeURIComponent('text/csv')}`);
+		return exported.ok ? (await exported.text()).replace(/^\uFEFF/, '') : '';
+	} finally {
+		await driveFetch(`${API}/files/${id}`, { method: 'DELETE' }).catch(() => undefined);
 	}
 }

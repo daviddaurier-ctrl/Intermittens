@@ -32,6 +32,7 @@ import {
 import { extractAnalytique, linkContractToProject } from '$lib/server/projectFromPayslip';
 import { analyzeCongesStatement } from '$lib/server/congesAnalysis';
 import { analyzeRoyaltyStatement } from '$lib/server/royaltyAnalysis';
+import { analyzeSacemAccount } from '$lib/server/sacemAnalysis';
 import {
 	createId,
 	deleteStoredFiles,
@@ -519,6 +520,50 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 			routedContractId: '',
 			analysis: { notes: ['Relevé Congés Spectacles ajouté au bilan Impôts.'] },
 			message: duplicate ? 'Relevé déjà présent.' : 'Relevé Congés Spectacles ajouté.'
+		});
+	}
+
+	// SACEM account statement (.xlsx): one payment per distribution.
+	const sacemPayments = analyzeSacemAccount(parts.map((part) => part.text).join('\n'), file.name);
+	if (sacemPayments.length) {
+		const latestId = createId('royalty');
+		const storedName = `${latestId}-${safeName || 'releve-sacem.xlsx'}`;
+		await writeStoredFile(storedName, buffer);
+		const addedIds: string[] = [];
+		const data = await mutateData((current) => {
+			const ordered = [...sacemPayments].sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
+			ordered.forEach((payment, index) => {
+				const duplicate = current.royalties.some(
+					(item) =>
+						item.source === 'SACEM' &&
+						item.paymentDate === payment.paymentDate &&
+						Math.abs(item.grossAmount - payment.grossAmount) < 0.01
+				);
+				if (duplicate) return;
+				const id = index === 0 ? latestId : createId('royalty');
+				// The statement is kept once, on the latest distribution.
+				current.royalties.unshift({
+					...payment,
+					id,
+					fileName: file.name,
+					storedName: index === 0 ? storedName : ''
+				});
+				addedIds.push(id);
+			});
+			return current;
+		});
+		if (!addedIds.includes(latestId)) await deleteStoredFiles([storedName]);
+		return json({
+			data,
+			royaltyIds: addedIds,
+			documentIds: [],
+			periodIds: [],
+			appliedFields: {},
+			companySuggestions: [],
+			createdContractId: '',
+			routedContractId: '',
+			analysis: { notes: [`${addedIds.length} répartition(s) SACEM ajoutée(s).`] },
+			message: addedIds.length ? `${addedIds.length} répartition(s) SACEM ajoutée(s).` : 'Relevé SACEM déjà présent.'
 		});
 	}
 

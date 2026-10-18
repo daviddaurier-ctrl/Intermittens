@@ -271,6 +271,26 @@ export async function extractTextFromBuffer(fileName: string, type: string, buff
 		return normalizeText(new TextDecoder('utf-8').decode(buffer));
 	}
 
+	if (/spreadsheet|ms-excel/.test(lowerType) || /\.(xlsx|xls|ods)$/.test(lowerName)) {
+		try {
+			const { driveEnabled, driveSpreadsheetToCsv } = await import('$lib/server/googleDrive');
+			if (driveEnabled()) {
+				const type =
+					lowerType ||
+					(lowerName.endsWith('.ods')
+						? 'application/vnd.oasis.opendocument.spreadsheet'
+						: lowerName.endsWith('.xls')
+							? 'application/vnd.ms-excel'
+							: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+				// Keep the line breaks: one CSV row per line.
+				return (await driveSpreadsheetToCsv(buffer, type)).replace(/\r/g, '').trim();
+			}
+		} catch (cause) {
+			console.error('Lecture du tableur impossible :', cause);
+		}
+		return '';
+	}
+
 	if (lowerType.startsWith('image/') || /\.(jpe?g|png|webp|gif|heic|heif)$/.test(lowerName)) {
 		return normalizeText(await extractImageText(buffer, lowerType || 'image/jpeg'));
 	}
