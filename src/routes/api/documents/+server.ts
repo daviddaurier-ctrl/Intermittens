@@ -33,6 +33,7 @@ import { extractAnalytique, linkContractToProject } from '$lib/server/projectFro
 import { analyzeCongesStatement } from '$lib/server/congesAnalysis';
 import { analyzeRoyaltyStatement } from '$lib/server/royaltyAnalysis';
 import { analyzeSacemAccount } from '$lib/server/sacemAnalysis';
+import { analyzeFranceTravailLetter, applySituationMonths } from '$lib/server/franceTravailAnalysis';
 import {
 	createId,
 	deleteStoredFiles,
@@ -520,6 +521,59 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 			routedContractId: '',
 			analysis: { notes: ['Relevé Congés Spectacles ajouté au bilan Impôts.'] },
 			message: duplicate ? 'Relevé déjà présent.' : 'Relevé Congés Spectacles ajouté.'
+		});
+	}
+
+	// France Travail letters other than the admission notification: monthly statements,
+	// tax certificates, end of rights. They feed the Intermittence and Impôts tabs, never a period.
+	const ftLetter = analyzeFranceTravailLetter(parts.map((part) => part.text).join('\n'), file.name);
+	if (ftLetter) {
+		const ftId = createId('ft');
+		const storedName = `${ftId}-${safeName || 'france-travail.pdf'}`;
+		await writeStoredFile(storedName, buffer);
+		let duplicate = false;
+		const { situation, ...letter } = ftLetter;
+		const data = await mutateData((current) => {
+			current.franceTravailDocs ??= [];
+			duplicate = current.franceTravailDocs.some(
+				(item) => item.fileName === letter.fileName && item.date === letter.date && item.kind === letter.kind
+			);
+			if (duplicate) return current;
+			current.franceTravailDocs.unshift({ ...letter, id: ftId, storedName });
+			const activePeriod = current.periods.find((period) => period.id === current.settings.activePeriodId);
+			if (situation?.months.length) {
+				applySituationMonths(current.monthlyInfos, situation.months, current.settings.activePeriodId);
+			}
+			if (situation?.dailyAllowance && activePeriod) {
+				activePeriod.dailyAllowance = situation.dailyAllowance;
+				current.settings.minDailyAllowance = situation.dailyAllowance;
+			}
+			if (letter.kind === 'Attestation fiscale' && letter.year) {
+				// Several certificates for one year (one per file): add them up.
+				const total = current.franceTravailDocs
+					.filter((item) => item.kind === 'Attestation fiscale' && item.year === letter.year)
+					.reduce((sum, item) => sum + item.amount, 0);
+				current.settings.taxYears ??= {};
+				current.settings.taxYears[letter.year] = {
+					...(current.settings.taxYears[letter.year] ?? {}),
+					unemploymentTaxable: Math.round(total * 100) / 100
+				} as (typeof current.settings.taxYears)[string];
+			}
+			return current;
+		});
+		if (duplicate) await deleteStoredFiles([storedName]);
+		return json({
+			data,
+			ftIds: duplicate ? [] : [ftId],
+			ftKind: letter.kind,
+			documentIds: [],
+			periodIds: [],
+			appliedFields: {},
+			companySuggestions: [],
+			createdContractId: '',
+			routedContractId: '',
+			analysis: { notes: [letter.summary] },
+			message: duplicate ? 'Courrier France Travail déjà présent.' : letter.summary
 		});
 	}
 

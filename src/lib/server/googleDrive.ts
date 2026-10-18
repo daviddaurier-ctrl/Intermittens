@@ -146,6 +146,7 @@ export const DOCUMENT_TYPE_FOLDERS = [
 	"Droits d'auteur",
 	'Droits de diffusion',
 	'Notifications ARE',
+	'France Travail',
 	'GUSO',
 	'Autres',
 	// Former folder of all royalty statements, still read so older copies are found.

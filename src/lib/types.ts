@@ -219,6 +219,23 @@ export type CongesPayment = {
 	notes: string;
 };
 
+/** France Travail letters other than the admission notification (statements, tax certificates…). */
+export type FranceTravailDocument = {
+	id: string;
+	kind: 'Relevé de situation' | 'Attestation fiscale' | 'Fin de droits' | 'Courrier';
+	/** Date of the letter. */
+	date: string;
+	fileName: string;
+	storedName: string;
+	summary: string;
+	/** Attestation fiscale: income year and taxable amount to report (1AP), tax withheld. */
+	year: string;
+	amount: number;
+	withheldTax: number;
+	/** Relevé de situation: months covered (AAAA-MM). */
+	months: string[];
+};
+
 export type TaxYearSettings = {
 	/** Deduction bounds for the 10 % flat professional-expenses allowance of that income year. */
 	flatDeductionMin: number;
@@ -280,6 +297,7 @@ export type AppData = {
 	works: AuthorWork[];
 	royalties: RoyaltyPayment[];
 	congesPayments: CongesPayment[];
+	franceTravailDocs: FranceTravailDocument[];
 	settings: AppSettings;
 };
 

@@ -75,6 +75,7 @@ const FOLDER_BY_TYPE: Record<string, string> = {
 	// Broadcast/performance rights paid by the societies (SACD, SACEM, SCAM).
 	Diffusion: 'Droits de diffusion',
 	ARE: 'Notifications ARE',
+	FranceTravail: 'France Travail',
 	Guso: 'GUSO',
 	Document: 'Autres'
 };
@@ -163,6 +164,20 @@ export function planReadableNames(data: AppData): RenamePlan[] {
 			extensionOf(payment.storedName)
 		);
 		payment.storedName = rename(payment.storedName, wanted);
+	}
+
+	for (const letter of data.franceTravailDocs ?? []) {
+		if (!letter.storedName) continue;
+		const type =
+			letter.kind === 'Relevé de situation'
+				? 'ReleveSituation'
+				: letter.kind === 'Attestation fiscale'
+					? `AttestationFiscale${letter.year ? `-${letter.year}` : ''}`
+					: letter.kind === 'Fin de droits'
+						? 'FinDeDroits'
+						: 'Courrier';
+		const wanted = `${FOLDER_BY_TYPE.FranceTravail}/${[monthOf(letter.date), type, 'francetravail'].join('_')}${extensionOf(letter.storedName)}`;
+		letter.storedName = rename(letter.storedName, wanted);
 	}
 
 	for (const payment of data.royalties) {

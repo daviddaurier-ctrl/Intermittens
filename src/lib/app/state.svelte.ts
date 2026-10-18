@@ -86,6 +86,8 @@ type DocumentImportPayload = DocumentUploadPayload & {
 	appliedFields: Partial<ContractFields>;
 	royaltyIds?: string[];
 	congesIds?: string[];
+	ftIds?: string[];
+	ftKind?: string;
 };
 
 export type ContractImportFeedbackItem = {
@@ -953,6 +955,20 @@ export function createIntermittensState(initialData: AppData) {
 					destination: payload.congesIds.length
 						? 'Ajouté au bilan de l’onglet Impôts'
 						: 'Déjà présent dans l’onglet Impôts',
+					fields: [],
+					warnings: []
+				});
+				continue;
+			}
+
+			if (payload.ftIds !== undefined) {
+				items.push({
+					fileName: file.name,
+					status: 'success',
+					kind: payload.ftKind || 'Courrier France Travail',
+					destination: payload.ftIds.length
+						? payload.message || 'Ajouté à l’onglet Intermittence'
+						: 'Déjà présent',
 					fields: [],
 					warnings: []
 				});

@@ -102,6 +102,7 @@ export function createDefaultData(): AppData {
 		works: [],
 		royalties: [],
 		congesPayments: [],
+		franceTravailDocs: [],
 		settings: {
 			referenceStartDate: `${new Date().getFullYear()}-01-01`,
 			targetHours: 507,
@@ -524,6 +525,24 @@ export function normalizeData(input: Partial<AppData>): AppData {
 		royalties: Array.isArray(input.royalties) ? input.royalties.map(normalizeRoyalty) : [],
 		congesPayments: Array.isArray(input.congesPayments)
 			? input.congesPayments.map(normalizeCongesPayment)
+			: [],
+		franceTravailDocs: Array.isArray(input.franceTravailDocs)
+			? input.franceTravailDocs.map((item) => ({
+					id: cleanString(item?.id) || createId('ft'),
+					kind: (['Relevé de situation', 'Attestation fiscale', 'Fin de droits', 'Courrier'] as const).includes(
+						item?.kind as never
+					)
+						? item.kind
+						: 'Courrier',
+					date: cleanString(item?.date),
+					fileName: cleanString(item?.fileName),
+					storedName: cleanString(item?.storedName),
+					summary: cleanString(item?.summary),
+					year: cleanString(item?.year),
+					amount: normalizeNumber(item?.amount),
+					withheldTax: normalizeNumber(item?.withheldTax),
+					months: Array.isArray(item?.months) ? item.months.map(cleanString).filter(Boolean) : []
+				}))
 			: [],
 		settings: {
 			...settings,
