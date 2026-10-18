@@ -6,11 +6,25 @@
 	import DriveImport from '$lib/components/DriveImport.svelte';
 	import ImportFeedback from '$lib/components/ImportFeedback.svelte';
 	import { buildHoursOutlook, buildMonthlyContractBreakdown, contractRecognizedHours, monthLabel } from '$lib/stats';
+	import { salaryFollowUp } from '$lib/contractFollowUp';
 	import type { Contract } from '$lib/types';
 
 	let { state: appState }: { state: IntermittensState } = $props();
 
 	let outlook = $derived(buildHoursOutlook(appState.appData));
+	/** Cachets promised by the contracts but not yet worked (no payslip yet). */
+	let remainingWork = $derived(
+		appState.appData.works
+			.map((work) => ({ work, followUp: salaryFollowUp(appState.appData, work) }))
+			.filter(({ followUp }) => followUp && followUp.promisedCachets && followUp.remainingCachets > 0)
+			.map(({ work, followUp }) => ({
+				title: work.title,
+				producer: work.producer,
+				cachets: followUp!.remainingCachets,
+				hours: followUp!.remainingCachets * 12
+			}))
+	);
+	let remainingWorkHours = $derived(remainingWork.reduce((total, item) => total + item.hours, 0));
 	const outlookText: Record<string, string> = {
 		reached: 'Objectif atteint avec les contrats connus',
 		'on-track': 'Au rythme actuel, tu y arrives largement',
@@ -212,6 +226,26 @@
 			<div><span>Rythme nécessaire</span><strong>{formatNumber(outlook.neededPerMonth, 0)} h / mois</strong></div>
 			<div><span>Ton rythme</span><strong>{formatNumber(outlook.pacePerMonth, 0)} h / mois</strong><small>projection {formatNumber(outlook.projectedHours, 0)} h</small></div>
 		</div>
+		{#if remainingWork.length}
+			<div class="remaining-work">
+				<strong>Encore à faire d'après tes contrats</strong>
+				<ul>
+					{#each remainingWork as item}
+						<li>
+							Il te reste <strong>{item.cachets} cachet{item.cachets > 1 ? 's' : ''}</strong>
+							(≈ {item.hours} h) à faire avec {item.producer || 'le producteur'} pour
+							<em>{item.title}</em>
+						</li>
+					{/each}
+				</ul>
+				<small
+					>Soit ≈ {remainingWorkHours} h de plus, à compter si elles tombent avant le
+					{formatDate(outlook.anniversary)}{outlook.workedHours + outlook.plannedHours + remainingWorkHours >= outlook.target
+						? ` : avec elles, tu atteins ${outlook.target} h.`
+						: '.'}</small
+				>
+			</div>
+		{/if}
 	</section>
 	<section class="panel">
 		<div class="panel-heading">
@@ -365,6 +399,10 @@
 	.hours-outlook[data-status='reached'] .outlook-dot, .hours-outlook[data-status='on-track'] .outlook-dot { background: #2fb36b; }
 	.hours-outlook[data-status='tight'] .outlook-dot { background: #f59e0b; }
 	.hours-outlook[data-status='late'] .outlook-dot { background: #e5383b; }
+	.remaining-work { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(91, 123, 224, 0.1); }
+	.remaining-work ul { margin: 6px 0; padding-left: 18px; }
+	.remaining-work li { margin: 3px 0; }
+	.remaining-work small { opacity: 0.8; }
 	.outlook-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 	.outlook-grid > div { display: grid; gap: 2px; padding: 8px 10px; border-radius: 10px; background: rgba(255, 61, 139, 0.07); }
 	.outlook-grid span, .outlook-grid small { font-size: 0.78rem; opacity: 0.75; }
