@@ -32,7 +32,7 @@ import {
 import { extractAnalytique, linkContractToProject } from '$lib/server/projectFromPayslip';
 import { analyzeCongesStatement } from '$lib/server/congesAnalysis';
 import { analyzeRoyaltyStatement } from '$lib/server/royaltyAnalysis';
-import { analyzeSacemAccount } from '$lib/server/sacemAnalysis';
+import { analyzeSacemAccount, isSacemWorksDetail, parseSacemWorksDetail } from '$lib/server/sacemAnalysis';
 import { analyzeFranceTravailLetter, applySituationMonths } from '$lib/server/franceTravailAnalysis';
 import {
 	createId,
@@ -574,6 +574,76 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 			routedContractId: '',
 			analysis: { notes: [letter.summary] },
 			message: duplicate ? 'Courrier France Travail déjà présent.' : letter.summary
+		});
+	}
+
+	// SACEM "Toutes œuvres" detail (.csv): the works behind each distribution, attached as lines
+	// to the matching "Répartition nnn" payment.
+	const detailText = parts.map((part) => part.text).join('\n');
+	if (isSacemWorksDetail(detailText)) {
+		const detail = parseSacemWorksDetail(detailText);
+		const detailId = createId('royalty');
+		const storedName = `${detailId}-${safeName || 'sacem-detail.csv'}`;
+		const touched: string[] = [];
+		const missing: string[] = [];
+		const data = await mutateData((current) => {
+			const groups = new Map<string, typeof detail>();
+			for (const line of detail) groups.set(line.distribution, [...(groups.get(line.distribution) ?? []), line]);
+			for (const [distribution, lines] of groups) {
+				const payment = current.royalties.find(
+					(item) => item.source === 'SACEM' && new RegExp(`\\b${distribution}\\b`).test(item.label)
+				);
+				const cleaned = lines.map(({ distribution: _distribution, ...line }) => line);
+				if (payment) {
+					payment.lines = cleaned;
+					payment.workId = '';
+					const titles = [...new Set(cleaned.map((line) => line.title).filter(Boolean))];
+					payment.label = [`Répartition ${distribution}`, titles.join(', ')].filter(Boolean).join(' — ');
+					touched.push(payment.id);
+				} else {
+					missing.push(distribution);
+					current.royalties.unshift({
+						id: createId('royalty'),
+						source: 'SACEM',
+						payerName: 'SACEM',
+						workId: '',
+						label: `Répartition ${distribution}`,
+						paymentDate: '',
+						grossAmount: Math.round(cleaned.reduce((sum, line) => sum + line.amount, 0) * 100) / 100,
+						withheldContributions: 0,
+						netAmount: 0,
+						contributionsWithheld: true,
+						status: 'Attendu',
+						notes: `Répartition ${distribution} absente du relevé de compte : sans doute reportée sur un prochain versement`,
+						taxableAmount: 0,
+						fileName: file.name,
+						storedName: '',
+						lines: cleaned
+					});
+				}
+			}
+			// Keep the detail file next to the latest distribution it explains.
+			const latest = current.royalties
+				.filter((item) => touched.includes(item.id) && !item.storedName)
+				.sort((a, b) => b.paymentDate.localeCompare(a.paymentDate))[0];
+			if (latest) {
+				latest.storedName = storedName;
+				latest.fileName = file.name;
+			}
+			return current;
+		});
+		await writeStoredFile(storedName, buffer);
+		return json({
+			data,
+			royaltyIds: touched,
+			documentIds: [],
+			periodIds: [],
+			appliedFields: {},
+			companySuggestions: [],
+			createdContractId: '',
+			routedContractId: '',
+			analysis: { notes: [`Détail SACEM : ${detail.length} ligne(s) réparties sur ${touched.length} versement(s).`] },
+			message: `Détail SACEM : ${detail.length} ligne(s)${missing.length ? `, répartition(s) ${missing.join(', ')} pas encore versée(s)` : ''}.`
 		});
 	}
 

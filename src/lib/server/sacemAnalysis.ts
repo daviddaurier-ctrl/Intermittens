@@ -1,4 +1,4 @@
-import type { RoyaltyPayment } from '$lib/types';
+import type { RoyaltyLine, RoyaltyPayment } from '$lib/types';
 
 /**
  * SACEM "Mon relevé de compte" (export .xlsx/.csv of the member account): one line per movement.
@@ -90,4 +90,62 @@ export function analyzeSacemAccount(
 		});
 	}
 	return payments.sort((a, b) => a.paymentDate.localeCompare(b.paymentDate));
+}
+
+/**
+ * SACEM "Toutes œuvres" detail export (CSV, ";"): one line per work and use, with the
+ * distribution number ("Rion paiement"), title, work code, user (channel), period and net rights.
+ */
+export function isSacemWorksDetail(text: string) {
+	return /rion paiement\s*;\s*titre de l.oeuvre/i.test(text.replace(/^﻿/, ''));
+}
+
+export type SacemDetailLine = RoyaltyLine & { distribution: string };
+
+export function parseSacemWorksDetail(text: string): SacemDetailLine[] {
+	const rows = text
+		.replace(/^﻿/, '')
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.filter(Boolean);
+	const header = rows.shift()?.split(';').map((cell) => cell.trim().toLowerCase()) ?? [];
+	const col = (name: RegExp) => header.findIndex((cell) => name.test(cell));
+	const at = {
+		distribution: col(/^rion paiement/),
+		title: col(/^titre de l.oeuvre$/),
+		code: col(/^code de l.oeuvre$/),
+		genre: col(/^genre$/),
+		family: col(/^familles/),
+		use: col(/^types d.utilisation/),
+		user: col(/^utilisateurs/),
+		country: col(/^pays/),
+		period: col(/^p[ée]riode/),
+		quantity: col(/^quantit/),
+		share: col(/^cl[ée] de$/),
+		net: col(/^mes droits en net/)
+	};
+	const num = (value?: string) => Number((value ?? '').replace(/\s/g, '').replace(',', '.')) || 0;
+	return rows.map((row) => {
+		const cells = row.split(';');
+		const get = (index: number) => (index >= 0 ? (cells[index] ?? '').trim() : '');
+		const rawTitle = get(at.title);
+		const title = /^non renseign/i.test(rawTitle) ? '' : rawTitle;
+		return {
+			distribution: get(at.distribution),
+			workCode: get(at.code) === '-1' ? '' : get(at.code),
+			title,
+			workId: '',
+			broadcaster: get(at.user),
+			period: get(at.period),
+			count: num(get(at.quantity)),
+			duration: '',
+			mode: get(at.use) || get(at.family),
+			country: get(at.country) === 'FRANCE' ? 'FR' : get(at.country),
+			amount: Math.round(num(get(at.net)) * 100) / 100,
+			societyFee: 0,
+			sharePercent: num(get(at.share)),
+			flags: get(at.genre),
+			producer: ''
+		};
+	});
 }

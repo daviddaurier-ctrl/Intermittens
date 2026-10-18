@@ -438,7 +438,8 @@ function normalizeRoyalty(payment: Partial<RoyaltyPayment>): RoyaltyPayment {
 					societyFee: normalizeNumber(line?.societyFee),
 					sharePercent: normalizeNumber(line?.sharePercent),
 					flags: cleanString(line?.flags),
-					producer: cleanString(line?.producer)
+					producer: cleanString(line?.producer),
+					workCode: cleanString(line?.workCode)
 				}))
 			: []
 	};

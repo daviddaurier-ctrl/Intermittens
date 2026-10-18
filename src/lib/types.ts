@@ -195,6 +195,8 @@ export type RoyaltyLine = {
 	flags: string;
 	/** Producer of the show (stage performances). */
 	producer: string;
+	/** Work code given by the society (SACEM "code de l'œuvre"…). */
+	workCode?: string;
 };
 
 export type RoyaltyPayment = {

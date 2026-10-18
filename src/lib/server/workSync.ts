@@ -367,12 +367,17 @@ export async function syncWorks(
 		for (const work of data.works.filter((item) => workIds.has(item.id))) {
 			work.declarations ??= [];
 			const existing = work.declarations.find((item) => item.society === payment.source);
+			const code = (payment.lines ?? []).find((line) => line.workId === work.id && line.workCode)?.workCode ?? '';
+			if (existing && code && !existing.reference) {
+				existing.reference = code;
+				changed += 1;
+			}
 			if (!existing) {
 				work.declarations.push({
 					society: payment.source,
 					status: 'Confirmée',
 					date: '',
-					reference: '',
+					reference: code,
 					notes: `Droits versés le ${payment.paymentDate}`
 				});
 				changed += 1;
