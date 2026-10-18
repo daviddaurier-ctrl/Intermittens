@@ -6,24 +6,13 @@
 	import DriveImport from '$lib/components/DriveImport.svelte';
 	import ImportFeedback from '$lib/components/ImportFeedback.svelte';
 	import { buildHoursOutlook, buildMonthlyContractBreakdown, contractRecognizedHours, monthLabel } from '$lib/stats';
-	import { salaryFollowUp } from '$lib/contractFollowUp';
+	import { remainingContractWork } from '$lib/contractFollowUp';
 	import type { Contract } from '$lib/types';
 
 	let { state: appState }: { state: IntermittensState } = $props();
 
 	let outlook = $derived(buildHoursOutlook(appState.appData));
-	/** Cachets promised by the contracts but not yet worked (no payslip yet). */
-	let remainingWork = $derived(
-		appState.appData.works
-			.map((work) => ({ work, followUp: salaryFollowUp(appState.appData, work) }))
-			.filter(({ followUp }) => followUp && followUp.promisedCachets && followUp.remainingCachets > 0)
-			.map(({ work, followUp }) => ({
-				title: work.title,
-				producer: work.producer,
-				cachets: followUp!.remainingCachets,
-				hours: followUp!.remainingCachets * 12
-			}))
-	);
+	let remainingWork = $derived(remainingContractWork(appState.appData));
 	let remainingWorkHours = $derived(remainingWork.reduce((total, item) => total + item.hours, 0));
 	const outlookText: Record<string, string> = {
 		reached: 'Objectif atteint avec les contrats connus',

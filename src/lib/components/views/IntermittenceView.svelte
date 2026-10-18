@@ -4,8 +4,10 @@
 	import type { IntermittensState } from '$lib/app/state.svelte';
 	import DateInput from '$lib/components/DateInput.svelte';
 	import { formatCurrency, formatNumber, formatPreciseCurrency } from '$lib/format';
+	import { remainingContractWork } from '$lib/contractFollowUp';
 
 	let { state }: { state: IntermittensState } = $props();
+	let remainingWork = $derived(remainingContractWork(state.appData));
 </script>
 
 <section class="view-grid two-columns">
@@ -378,6 +380,21 @@
 			>
 		</div>
 
+		{#if remainingWork.length}
+			<div class="remaining-work">
+				<strong>D'après tes contrats signés</strong>
+				<ul>
+					{#each remainingWork as item}
+						<li>
+							Il te reste <strong>{item.cachets} cachet{item.cachets > 1 ? 's' : ''}</strong>
+							(≈ {item.hours} h{item.salary ? `, ${formatCurrency(item.salary)} brut` : ''}) à faire avec
+							{item.producer || 'le producteur'} pour <em>{item.title}</em>
+						</li>
+					{/each}
+				</ul>
+			</div>
+		{/if}
+
 		<div class="future-list">
 			{#each state.appData.futureContracts as future}
 				<article class="future-item">
@@ -424,3 +441,9 @@
 		</div>
 	</section>
 </section>
+
+<style>
+	.remaining-work { margin-bottom: 12px; padding: 10px 12px; border-radius: 12px; background: rgba(91, 123, 224, 0.1); }
+	.remaining-work ul { margin: 6px 0 0; padding-left: 18px; }
+	.remaining-work li { margin: 3px 0; }
+</style>

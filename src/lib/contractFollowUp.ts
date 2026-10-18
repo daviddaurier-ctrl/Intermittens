@@ -44,3 +44,17 @@ export function salaryFollowUp(data: AppData, work: AuthorWork): SalaryFollowUp 
 export function workForProject(data: AppData, projectId: string) {
 	return projectId ? data.works.find((work) => work.projectId === projectId) : undefined;
 }
+
+/** Cachets promised by the signed contracts but not yet worked (no payslip yet). */
+export function remainingContractWork(data: AppData) {
+	return data.works
+		.map((work) => ({ work, followUp: salaryFollowUp(data, work) }))
+		.filter(({ followUp }) => followUp && followUp.promisedCachets && followUp.remainingCachets > 0)
+		.map(({ work, followUp }) => ({
+			title: work.title,
+			producer: work.producer,
+			cachets: followUp!.remainingCachets,
+			hours: followUp!.remainingCachets * 12,
+			salary: Math.max(0, followUp!.remainingSalary)
+		}));
+}
