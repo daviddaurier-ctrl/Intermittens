@@ -1762,6 +1762,56 @@ pre {
 	font-size: 20px;
 }
 
+.urssaf-box {
+	display: grid;
+	gap: 10px;
+	margin-top: 12px;
+	border: 1px solid rgba(214, 36, 112, 0.18);
+	border-radius: 10px;
+	padding: 12px 14px;
+	background: rgba(255, 240, 246, 0.6);
+	min-width: 0;
+}
+
+.urssaf-box h4 {
+	margin: 0;
+	color: #b0195c;
+	font-size: 15px;
+}
+
+.urssaf-figures {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 10px;
+}
+
+.urssaf-figures > div {
+	display: grid;
+	gap: 2px;
+	background: #fff;
+	border-radius: 8px;
+	padding: 8px 10px;
+}
+
+.urssaf-figures span,
+.urssaf-figures small {
+	color: #9b4d72;
+	font-size: 12px;
+}
+
+.urssaf-figures strong {
+	font-size: 18px;
+}
+
+.urssaf-box ol {
+	margin: 0;
+	padding-left: 20px;
+	display: grid;
+	gap: 6px;
+	font-size: 13px;
+	line-height: 1.45;
+}
+
 .work-total {
 	color: #9b4d72;
 	font-size: 13px;

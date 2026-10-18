@@ -15,6 +15,7 @@
 		workTotals
 	} from '$lib/royalties';
 	import { salaryFollowUp } from '$lib/contractFollowUp';
+	import { urssafAuthorYear } from '$lib/urssafAuteur';
 	import { societyForFormat, workFormats } from '$lib/workFormat';
 	import type {
 		AuthorWork,
@@ -53,6 +54,7 @@
 	const familyKeys: RoyaltyFamily[] = ['auteur', 'diffusion'];
 
 	let overview = $derived(buildYearOverview(appState.appData, selectedYear));
+	let urssaf = $derived(urssafAuthorYear(overview));
 	let yearPayments = $derived(
 		appState.appData.royalties
 			.filter((payment) => royaltyFamily(payment.source) === family)
@@ -530,6 +532,55 @@
 					<small>brut · net {formatCurrency(overview.byFamily.diffusion.net)}</small>
 				</div>
 			</div>
+
+			{#if urssaf.gross > 0}
+				<div class="urssaf-box">
+					<h4>URSSAF artistes-auteurs — droits {urssaf.year}</h4>
+					<div class="urssaf-figures">
+						<div>
+							<span>Précomptés</span>
+							<strong>{formatCurrency(urssaf.withheldGross)}</strong>
+							<small>cotisations déjà retenues sur le versement</small>
+						</div>
+						<div>
+							<span>Sans précompte</span>
+							<strong>{formatCurrency(urssaf.notWithheldGross)}</strong>
+							<small>
+								{urssaf.notWithheldGross > 0
+									? `≈ ${formatCurrency(urssaf.estimatedDue)} de cotisations à payer`
+									: 'rien à payer en plus'}
+							</small>
+						</div>
+					</div>
+					<ol>
+						<li>
+							<strong>Printemps {urssaf.declarationYear} (fin avril → mi-juin)</strong> : sur
+							artistes-auteurs.urssaf.fr, l’URSSAF te présente une déclaration préremplie avec ce que
+							tes producteurs et sociétés ont déclaré. Compare avec le total brut ci-dessus
+							({formatCurrency(urssaf.gross)}) et valide.
+						</li>
+						{#if urssaf.notWithheldGross > 0}
+							<li>
+								Ajoute les {formatCurrency(urssaf.notWithheldGross)} versés sans précompte : l’URSSAF
+								t’enverra un appel (régularisation l’été, puis échéances du 15 janvier, avril, juillet et
+								octobre). C’est le seul cas où tu paies toi-même.
+							</li>
+						{:else}
+							<li>
+								Tout est précompté : en principe, tu n’as rien à payer. Si l’URSSAF te réclame quelque
+								chose, vérifie l’appel : c’est souvent un versement qu’un payeur n’a pas déclaré.
+							</li>
+						{/if}
+						{#if urssaf.belowThreshold}
+							<li>
+								Tu es sous le seuil de {formatCurrency(urssaf.threshold)} (600 h de SMIC) : l’URSSAF peut
+								proposer de <em>surcotiser</em> pour la retraite. C’est facultatif, et tes salaires
+								d’intermittent valident déjà des trimestres.
+							</li>
+						{/if}
+					</ol>
+				</div>
+			{/if}
 
 			<p class="hint">
 				Ces totaux servent de base pour la déclaration annuelle à l'URSSAF artistes-auteurs et pour la
