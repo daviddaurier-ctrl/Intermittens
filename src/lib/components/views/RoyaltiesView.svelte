@@ -730,7 +730,9 @@
 					{:else}
 						<p class="hint">Aucune déclaration notée pour cette œuvre.</p>
 					{/each}
-					<button type="button" onclick={() => addDeclaration(selectedWork!)}>+ Déclaration</button>
+					<div class="button-row">
+						<button type="button" onclick={() => addDeclaration(selectedWork!)}>+ Déclaration</button>
+					</div>
 				</div>
 				{#if broadcasts.length}
 					<div class="wide">
