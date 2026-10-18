@@ -6,6 +6,7 @@ import {
 	driveListImportableFiles,
 	driveVisibleFolderNames
 } from '$lib/server/googleDrive';
+import { restoreAllowancesFromNotifications } from '$lib/server/areRepair';
 
 // Vercel caps request and response bodies at 4.5 MB; keep a margin for the upload step.
 const MAX_IMPORT_BYTES = 4 * 1024 * 1024;
@@ -34,6 +35,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			);
 		}
 
+		await restoreAllowancesFromNotifications().catch((cause) => console.error(cause));
 		const all = await driveListImportableFiles(folder.id);
 		return json({
 			folder: folder.name,

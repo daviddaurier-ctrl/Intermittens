@@ -540,14 +540,11 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 			);
 			if (duplicate) return current;
 			current.franceTravailDocs.unshift({ ...letter, id: ftId, storedName });
-			const activePeriod = current.periods.find((period) => period.id === current.settings.activePeriodId);
 			if (situation?.months.length) {
 				applySituationMonths(current.monthlyInfos, situation.months, current.settings.activePeriodId);
 			}
-			if (situation?.dailyAllowance && activePeriod) {
-				activePeriod.dailyAllowance = situation.dailyAllowance;
-				current.settings.minDailyAllowance = situation.dailyAllowance;
-			}
+			// The daily allowance of a period comes from its ARE notification only: a relevé de
+			// situation may show the AJ of a previous period, so it never overwrites it.
 			if (letter.kind === 'Attestation fiscale' && letter.year) {
 				// Several certificates for one year (one per file): add them up.
 				const total = current.franceTravailDocs
