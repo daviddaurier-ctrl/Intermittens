@@ -385,7 +385,18 @@ function normalizeWork(work: Partial<AuthorWork>): AuthorWork {
 		promisedSalary: normalizeNumber(work.promisedSalary),
 		promisedCachets: normalizeNumber(work.promisedCachets),
 		salaryNotes: cleanString(work.salaryNotes),
-		salaryChecked: work.salaryChecked === true
+		salaryChecked: work.salaryChecked === true,
+		declarations: Array.isArray(work.declarations)
+			? work.declarations.map((item) => ({
+					society: pick(item?.society, royaltySources, 'SACEM'),
+					status: (['À déclarer', 'Déclarée', 'Confirmée'] as const).includes(item?.status as never)
+						? item.status
+						: 'À déclarer',
+					date: cleanString(item?.date),
+					reference: cleanString(item?.reference),
+					notes: cleanString(item?.notes)
+				}))
+			: []
 	};
 }
 

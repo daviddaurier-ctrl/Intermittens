@@ -195,7 +195,8 @@ function newWork(title: string, producer: string): AuthorWork {
 		promisedSalary: 0,
 		promisedCachets: 0,
 		salaryNotes: '',
-		salaryChecked: false
+		salaryChecked: false,
+		declarations: []
 	};
 }
 
@@ -219,6 +220,22 @@ function applySalaryTerms(work: AuthorWork, text: string, isAvenant: boolean, pr
 		work.salaryNotes = `${isAvenant ? 'Avenant' : 'Contrat'} (${terms.how})`;
 	}
 	work.salaryChecked = true;
+	// Which society the contract points to (the author still has to declare the work there).
+	if (!work.declarations?.length) {
+		const flat = flatten(text).toLowerCase();
+		const society = /repertoire de la scam|\bscam\b/.test(flat)
+			? 'SCAM'
+			: /membre de la sacem|\bsacem\b/.test(flat)
+				? 'SACEM'
+				: /\bsacd\b/.test(flat)
+					? 'SACD'
+					: '';
+		if (society) {
+			work.declarations = [
+				{ society, status: 'À déclarer', date: '', reference: '', notes: 'Société indiquée par le contrat' }
+			];
+		}
+	}
 }
 
 export async function syncWorks(
@@ -340,6 +357,29 @@ export async function syncWorks(
 		if (!payment.workId && workIds.length === 1) {
 			payment.workId = workIds[0];
 			changed += 1;
+		}
+	}
+
+	// Works paid by a society are registered there: mark the declaration as confirmed.
+	for (const payment of data.royalties) {
+		if (payment.source !== 'SACD' && payment.source !== 'SACEM' && payment.source !== 'SCAM') continue;
+		const workIds = new Set([payment.workId, ...(payment.lines ?? []).map((line) => line.workId)].filter(Boolean));
+		for (const work of data.works.filter((item) => workIds.has(item.id))) {
+			work.declarations ??= [];
+			const existing = work.declarations.find((item) => item.society === payment.source);
+			if (!existing) {
+				work.declarations.push({
+					society: payment.source,
+					status: 'Confirmée',
+					date: '',
+					reference: '',
+					notes: `Droits versés le ${payment.paymentDate}`
+				});
+				changed += 1;
+			} else if (existing.status !== 'Confirmée') {
+				existing.status = 'Confirmée';
+				changed += 1;
+			}
 		}
 	}
 

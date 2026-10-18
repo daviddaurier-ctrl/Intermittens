@@ -35,8 +35,12 @@ export function isFranceTravailLetter(text: string) {
 /** Admission / rights notifications stay handled as an indemnisation period. */
 export function isAdmissionNotification(text: string) {
 	const flat = flatten(text).toLowerCase();
-	return /notification|ouverture de droits|admission|rechargement|reexamen/.test(flat) &&
-		!/releve de situation|justificatif pour votre declaration fiscale|attestation d indemnisation en/.test(flat);
+	return (
+		/notification|ouverture de droits|admission|rechargement|reexamen/.test(flat) &&
+		!/releve de situation|justificatif pour votre declaration fiscale|attestation d indemnisation en|atteinte de votre|fin de (?:periode|droits)/.test(
+			flat
+		)
+	);
 }
 
 export type SituationMonth = {
@@ -93,23 +97,6 @@ export function analyzeFranceTravailLetter(
 	const date = letterDate(flat);
 	const base = { fileName, date, year: '', amount: 0, withheldTax: 0, months: [] as string[] };
 
-	if (/releve de situation/i.test(flat)) {
-		const situation = parseSituationStatement(text);
-		const total = situation.months.reduce((sum, item) => sum + item.net, 0);
-		return {
-			...base,
-			kind: 'Relevé de situation',
-			months: situation.months.map((item) => item.month),
-			summary: situation.months.length
-				? situation.months
-						.map((item) => `${item.month} : ${item.days} AJ, ${item.net.toFixed(2).replace('.', ',')} € net`)
-						.join(' · ')
-				: 'Relevé sans allocation versée',
-			amount: Math.round(total * 100) / 100,
-			situation
-		};
-	}
-
 	if (/justificatif pour votre declaration fiscale|attestation d indemnisation en/i.test(flat)) {
 		const year =
 			flat.match(/declaration fiscale (\d{4})/i)?.[1] ??
@@ -132,6 +119,23 @@ export function analyzeFranceTravailLetter(
 			summary: nothing
 				? `Revenus ${year} : rien à déclarer pour ce dossier`
 				: `Revenus ${year} : ${amount.toFixed(2).replace('.', ',')} € à déclarer (case 1AP)${withheld ? `, ${withheld.toFixed(2).replace('.', ',')} € prélevés à la source` : ''}`
+		};
+	}
+
+	if (/releve de situation du \d{2}\/\d{2}\/\d{4}/i.test(flat)) {
+		const situation = parseSituationStatement(text);
+		const total = situation.months.reduce((sum, item) => sum + item.net, 0);
+		return {
+			...base,
+			kind: 'Relevé de situation',
+			months: situation.months.map((item) => item.month),
+			summary: situation.months.length
+				? situation.months
+						.map((item) => `${item.month} : ${item.days} AJ, ${item.net.toFixed(2).replace('.', ',')} € net`)
+						.join(' · ')
+				: 'Relevé sans allocation versée',
+			amount: Math.round(total * 100) / 100,
+			situation
 		};
 	}
 

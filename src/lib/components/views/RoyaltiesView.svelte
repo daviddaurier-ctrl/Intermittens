@@ -15,7 +15,13 @@
 		workTotals
 	} from '$lib/royalties';
 	import { salaryFollowUp } from '$lib/contractFollowUp';
-	import type { AuthorWork, RoyaltyPayment, RoyaltyStatus, WorkKind } from '$lib/types';
+	import type {
+		AuthorWork,
+		DeclarationStatus,
+		RoyaltyPayment,
+		RoyaltyStatus,
+		WorkKind
+	} from '$lib/types';
 
 	let { state: appState }: { state: IntermittensState } = $props();
 
@@ -111,6 +117,36 @@
 			.sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
 	}
 
+	const declarationStatuses: DeclarationStatus[] = ['À déclarer', 'Déclarée', 'Confirmée'];
+	const declarationSocieties = ['SACEM', 'SACD', 'SCAM'] as const;
+	function declarationState(work: AuthorWork) {
+		const list = work.declarations ?? [];
+		if (!list.length) return 'none';
+		if (list.some((item) => item.status === 'À déclarer')) return 'todo';
+		if (list.every((item) => item.status === 'Confirmée')) return 'confirmed';
+		return 'sent';
+	}
+	const declarationLabel: Record<string, string> = {
+		none: 'Aucune déclaration notée',
+		todo: 'À déclarer',
+		sent: 'Déclarée, en attente',
+		confirmed: 'Déclarée et confirmée'
+	};
+	function addDeclaration(work: AuthorWork) {
+		work.declarations = [
+			...(work.declarations ?? []),
+			{ society: 'SCAM', status: 'À déclarer', date: '', reference: '', notes: '' }
+		];
+		appState.touch();
+	}
+	function removeDeclaration(work: AuthorWork, index: number) {
+		work.declarations = work.declarations.filter((_, position) => position !== index);
+		appState.touch();
+	}
+	let declarationsTodo = $derived(
+		appState.appData.works.filter((work) => ['todo', 'none'].includes(declarationState(work)))
+	);
+
 	function workTitle(workId: string) {
 		return appState.appData.works.find((work) => work.id === workId)?.title ?? '';
 	}
@@ -168,7 +204,8 @@
 			promisedSalary: 0,
 			promisedCachets: 0,
 			salaryNotes: '',
-			salaryChecked: true
+			salaryChecked: true,
+			declarations: []
 		};
 		appState.appData.works.unshift(work);
 		selectedWorkId = work.id;
@@ -497,6 +534,12 @@
 			<h3>{family === 'auteur' ? 'Œuvres (contrats de cession)' : 'Œuvres diffusées'}</h3>
 			<button type="button" title="Ajouter une œuvre" onclick={addWork}>+</button>
 		</div>
+		{#if declarationsTodo.length}
+			<p class="hint declaration-hint">
+				{declarationsTodo.length} œuvre{declarationsTodo.length > 1 ? 's' : ''} à déclarer ou sans
+				déclaration notée : {declarationsTodo.map((work) => work.title).join(', ')}.
+			</p>
+		{/if}
 		<div class="list compact">
 			{#each familyWorks as work (work.id)}
 				{@const balance = workBalance(work)}
@@ -506,6 +549,12 @@
 					onclick={() => (selectedWorkId = work.id)}
 				>
 					<strong class="work-line">
+						<span
+							class="declaration-badge"
+							data-state={declarationState(work)}
+							title={`${declarationLabel[declarationState(work)]}${(work.declarations ?? []).length ? ' : ' + work.declarations.map((item) => `${item.society} (${item.status})`).join(', ') : ''}`}
+							>{(work.declarations ?? []).map((item) => item.society).join('·') || '?'}</span
+						>
 						{#if family === 'auteur'}
 							<span class="balance-dot" data-state={balance.state} title={balanceLabel[balance.state]}></span>
 						{/if}
@@ -630,6 +679,26 @@
 					<span>Notes</span>
 					<textarea rows="2" bind:value={selectedWork.notes}></textarea>
 				</label>
+				<div class="wide declarations">
+					<h4 class="broadcast-title">Déclarations aux sociétés d’auteurs</h4>
+					{#each selectedWork.declarations ?? [] as declaration, index}
+						<div class="declaration-row" data-status={declaration.status}>
+							<select bind:value={declaration.society} onchange={() => appState.touch()}>
+								{#each declarationSocieties as society}<option value={society}>{society}</option>{/each}
+							</select>
+							<select bind:value={declaration.status} onchange={() => appState.touch()}>
+								{#each declarationStatuses as status}<option value={status}>{status}</option>{/each}
+							</select>
+							<DateInput bind:value={declaration.date} />
+							<input bind:value={declaration.reference} placeholder="N° d’œuvre / référence" oninput={() => appState.touch()} />
+							<button type="button" class="danger" title="Retirer" onclick={() => removeDeclaration(selectedWork!, index)}>×</button>
+							{#if declaration.notes}<small>{declaration.notes}</small>{/if}
+						</div>
+					{:else}
+						<p class="hint">Aucune déclaration notée pour cette œuvre.</p>
+					{/each}
+					<button type="button" onclick={() => addDeclaration(selectedWork!)}>+ Déclaration</button>
+				</div>
 				{#if broadcasts.length}
 					<div class="wide">
 						<h4 class="broadcast-title">Diffusions ({broadcasts.length})</h4>
@@ -686,6 +755,14 @@
 	.family-switch span { font-size: 0.8rem; opacity: 0.85; }
 	.family-hint { margin: 0 0 10px; }
 	@media (max-width: 640px) { .family-switch { grid-template-columns: 1fr; } }
+	.declaration-badge { font-size: 0.68rem; font-weight: 700; padding: 1px 6px; border-radius: 999px; background: #eee3ea; color: #7d5a6d; }
+	.declaration-badge[data-state='todo'], .declaration-badge[data-state='none'] { background: rgba(245, 158, 11, 0.2); color: #9a5b00; }
+	.declaration-badge[data-state='sent'] { background: rgba(91, 123, 224, 0.18); color: #3550a8; }
+	.declaration-badge[data-state='confirmed'] { background: rgba(47, 179, 107, 0.18); color: #1d7a47; }
+	.declaration-row { display: grid; grid-template-columns: 90px 120px 140px 1fr 36px; gap: 6px; align-items: center; margin-bottom: 6px; }
+	.declaration-row small { grid-column: 1 / -1; opacity: 0.7; }
+	.declaration-hint { margin: 0 0 8px; }
+	@media (max-width: 640px) { .declaration-row { grid-template-columns: 1fr 1fr; } }
 	.broadcast-title { margin: 6px 0 4px; font-size: 0.95rem; }
 	.work-line { display: inline-flex; align-items: center; gap: 6px; }
 	.balance-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; background: #c9b3c0; }

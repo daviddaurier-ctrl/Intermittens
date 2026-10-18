@@ -132,6 +132,19 @@ export type RoyaltySource = 'SACEM' | 'SACD' | 'SCAM' | 'Droits directs' | 'Autr
 export type RoyaltyStatus = 'Attendu' | 'Reçu' | 'Déclaré';
 export type WorkKind = 'Musique' | 'Spectacle vivant' | 'Audiovisuel' | 'Texte' | 'Autre';
 
+export type DeclarationStatus = 'À déclarer' | 'Déclarée' | 'Confirmée';
+
+/** Registration of a work with a collecting society (SACEM, SACD, SCAM). */
+export type WorkDeclaration = {
+	society: RoyaltySource;
+	status: DeclarationStatus;
+	/** Date the declaration was sent. */
+	date: string;
+	/** Reference given by the society (n° d'œuvre, ISAN…). */
+	reference: string;
+	notes: string;
+};
+
 export type AuthorWork = {
 	id: string;
 	title: string;
@@ -157,6 +170,8 @@ export type AuthorWork = {
 	promisedCachets: number;
 	salaryNotes: string;
 	salaryChecked: boolean;
+	/** Declarations of the work to the societies. */
+	declarations: WorkDeclaration[];
 };
 
 /** One line of a collecting society statement (SACD…): a broadcast or use of a work. */
