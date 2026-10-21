@@ -35,11 +35,10 @@ function monthOf(date: string) {
 	return /^\d{4}-\d{2}/.test(date) ? date.slice(0, 7).replace('-', '') : '000000';
 }
 
-function documentType(fileName: string, kind: string) {
+function documentType(fileName: string, kind: string, isPart = false) {
 	const name = plain(fileName);
 	// A part cut out of a multi-document PDF ("…-p2.pdf") keeps the parent's file name, so the
 	// name says nothing about this part: trust the kind detected from its own content.
-	const isPart = /-p\d+(?:-\d+)?\.[a-z0-9]+$/i.test(fileName);
 	if (!isPart) {
 		if (/\bbulletin|\bbul\b|^bp\b|\bpaie\b|\bfiche de paie\b/.test(name)) return 'Bulletin';
 		if (/\baem\b/.test(name)) return 'AEM';
@@ -144,7 +143,11 @@ export function planReadableNames(data: AppData): RenamePlan[] {
 		const wanted = build(
 			[
 				monthOf(date),
-				documentType(document.originalFileName || document.fileName, document.kind),
+				documentType(
+					document.originalFileName || document.fileName,
+					document.kind,
+					/-p\d+(?:-\d+)?\.[a-z0-9]+$/i.test(document.fileName)
+				),
 				company ? employerSlug(company.name) : '',
 				project ? projectSlug(project.name) : ''
 			],
