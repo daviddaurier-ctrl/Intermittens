@@ -9,7 +9,7 @@ import {
 import type { PDFField } from 'pdf-lib';
 
 import type { ContractFields, DocumentKind } from '$lib/types';
-import { frenchDatePattern, normalizeDateText, parseFrenchDate } from '$lib/date';
+import { frenchDatePattern, frenchMonthPattern, normalizeDateText, parseFrenchDate } from '$lib/date';
 
 export type DocumentAnalysis = {
 	textPreview: string;
@@ -204,8 +204,16 @@ export async function extractPdfTextFromBufferAsync(buffer: Buffer) {
 	return (await extractPdfDocumentText(buffer)).text;
 }
 
+/**
+ * Small-caps headings often come out of PDFs with their first letter split off
+ * ("C ONTRAT DE T RAVAIL"). Glue such letters back; only used as an extra search variant.
+ */
+function joinSplitSmallCaps(text: string) {
+	return text.replace(/\b([A-ZÀ-Ý]) (?=[A-ZÀ-Ý]{2,}\b)/g, '$1');
+}
+
 export function classifyDocumentKind(text: string, fallback: DocumentKind) {
-	const normalized = normalizeDateText(normalizeText(text));
+	const normalized = normalizeDateText(normalizeText(`${text}\n${joinSplitSmallCaps(text)}`));
 
 	if (
 		/notification|ouverture de droits|allocation journaliere|france travail/.test(normalized) ||
@@ -659,6 +667,25 @@ function matchExplicitPeriod(text: string) {
 		}
 	}
 
+	// Shared month/year: "du 26 au 29 octobre 2026", "du 28 decembre au 3 janvier 2027".
+	const shared = text.match(
+		new RegExp(
+			String.raw`\bdu\s+(1er|[0-3]?\d)(?:\s+(${frenchMonthPattern}))?\s+au\s+(1er|[0-3]?\d)\s+(${frenchMonthPattern})\s+(\d{4})`,
+			'i'
+		)
+	);
+	if (shared) {
+		const [, startDay, startMonth, endDay, endMonth, year] = shared;
+		const endDate = parseFrenchDate(`${endDay} ${endMonth} ${year}`);
+		let startDate = parseFrenchDate(`${startDay} ${startMonth || endMonth} ${year}`);
+		if (startDate && endDate && !isChronologicalPeriod(startDate, endDate)) {
+			startDate = parseFrenchDate(`${startDay} ${startMonth || endMonth} ${Number(year) - 1}`);
+		}
+		if (startDate && endDate && isChronologicalPeriod(startDate, endDate)) {
+			return { startDate, endDate };
+		}
+	}
+
 	return undefined;
 }
 
@@ -753,6 +780,11 @@ function matchPayrollTaxableNet(text: string) {
 
 function matchContractGrossSalary(text: string) {
 	const patterns = [
+		// "Rémunération brute totale : 1 128,48 €" wins over a daily rate printed just before.
+		new RegExp(
+			String.raw`\b(?:remuneration\s+brute\s+totale|salaire\s+brut\s+total|brut\s+total)\s*:?\s*${moneyPattern}`,
+			'i'
+		),
 		new RegExp(
 			String.raw`\b(?:a\s+titre\s+de\s+salaire|salaire\s+la\s+somme\s+de|remuneration)[\s\S]{0,100}?${moneyPattern}\s*(?:EUR|\u20ac|euros?)\s+brut(?:s|es)?\b`,
 			'i'
@@ -1159,7 +1191,13 @@ export function analyzeDocumentText(text: string): DocumentAnalysis {
 		cachets !== undefined && cachets > 0
 			? cachets * cachetHoursPerUnit(employmentStatus)
 			: undefined;
-	const hours = detectedHours ?? cachetHours;
+	// "Nombre de jours travaillés : 4 jours" — a technician's day counts 8 h.
+	const workedDays = toNumber(
+		searchable.match(/\bnombre\s+de\s+jours\s+travailles\s*:?\s*(\d+(?:[,.]\d+)?)/i)?.[1]
+	);
+	const dayHours =
+		workedDays !== undefined && cachetHoursPerUnit(employmentStatus) === 8 ? workedDays * 8 : undefined;
+	const hours = detectedHours ?? cachetHours ?? dayHours;
 	const grossSalary =
 		matchContractGrossSalary(searchable) ??
 		matchPayrollGrossSalary(searchable) ??
