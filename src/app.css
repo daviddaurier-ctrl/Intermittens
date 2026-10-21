@@ -1894,13 +1894,59 @@ pre {
 		text-align: left;
 	}
 
-	.calendar-grid {
-		min-width: 720px;
-	}
-
+	/* Phone: the month grid fills the screen width (7 narrow columns, no horizontal scroll). */
 	.dashboard-calendar-panel,
 	.calendar-page-panel {
-		overflow-x: auto;
+		overflow-x: visible;
+		padding-left: 8px;
+		padding-right: 8px;
+	}
+
+	.calendar-grid {
+		min-width: 0;
+		gap: 2px;
+	}
+
+	.calendar-weekday {
+		font-size: 10px;
+		padding: 2px 0;
+		text-align: center;
+	}
+
+	.calendar-day,
+	.calendar-page-panel .calendar-day {
+		min-width: 0;
+		min-height: 64px;
+		gap: 2px;
+		padding: 3px 2px;
+		border-radius: 6px;
+	}
+
+	.calendar-day-number {
+		width: 18px;
+		height: 18px;
+		border-radius: 5px;
+		font-size: 10px;
+	}
+
+	.calendar-day-contracts {
+		gap: 2px;
+	}
+
+	.calendar-contract-chip,
+	.calendar-anniversary-chip {
+		border-left-width: 2px;
+		border-radius: 3px;
+		padding: 1px 2px;
+		font-size: 9px;
+		line-height: 1.2;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.calendar-more {
+		font-size: 9px;
 	}
 
 	.calendar-year-grid {
