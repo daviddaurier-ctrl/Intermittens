@@ -983,6 +983,16 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 		return current;
 	});
 
+	// Documents refused as duplicates were already written to storage: remove those copies
+	// so they don't pile up unfiled in the storage folder.
+	const rejectedStoredNames = preparedDocuments
+		.filter((document) => !data.documents.some((kept) => kept.id === document.id))
+		.map((document) => document.storedName)
+		.filter(Boolean);
+	if (rejectedStoredNames.length) {
+		await deleteStoredFiles(rejectedStoredNames).catch((cause) => console.error(cause));
+	}
+
 	const shouldAutoCreateCompany = preparedDocuments.some(
 		(document) => document.kind === 'Déclaration Guso'
 	);
