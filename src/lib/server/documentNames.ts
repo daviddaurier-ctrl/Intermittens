@@ -37,11 +37,16 @@ function monthOf(date: string) {
 
 function documentType(fileName: string, kind: string) {
 	const name = plain(fileName);
-	if (/\bbulletin|\bbul\b|^bp\b|\bpaie\b|\bfiche de paie\b/.test(name)) return 'Bulletin';
-	if (/\baem\b/.test(name)) return 'AEM';
-	if (/\bcontrat\b|\bsigned\b/.test(name)) return 'Contrat';
-	if (/^cs\b|\bconges?\b|\bcertificat\b/.test(name)) return 'CongesSpectacles';
-	if (/\bnda\b|\bdecompte\b|\bdroits?\b/.test(name)) return 'NoteDroits';
+	// A part cut out of a multi-document PDF ("…-p2.pdf") keeps the parent's file name, so the
+	// name says nothing about this part: trust the kind detected from its own content.
+	const isPart = /-p\d+(?:-\d+)?\.[a-z0-9]+$/i.test(fileName);
+	if (!isPart) {
+		if (/\bbulletin|\bbul\b|^bp\b|\bpaie\b|\bfiche de paie\b/.test(name)) return 'Bulletin';
+		if (/\baem\b/.test(name)) return 'AEM';
+		if (/\bcontrat\b|\bsigned\b/.test(name)) return 'Contrat';
+		if (/^cs\b|\bconges?\b|\bcertificat\b/.test(name)) return 'CongesSpectacles';
+		if (/\bnda\b|\bdecompte\b|\bdroits?\b/.test(name)) return 'NoteDroits';
+	}
 	switch (kind) {
 		case 'Fiche de paie':
 			return 'Bulletin';
