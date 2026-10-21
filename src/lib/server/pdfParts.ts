@@ -141,16 +141,20 @@ export async function splitAndClassifyDocument(
 		];
 	}
 
+	// pdf.js reads encrypted PDFs (owner password only) fine; pdf-lib does not.
+	const extraction = await extractPdfDocumentText(buffer).catch(() => undefined);
+
 	try {
 		const source = await PDFDocument.load(buffer, { ignoreEncryption: true });
 		const pageCount = source.getPageCount();
 		const explicitKind = explicitDocumentKindFromFileName(fileName);
-		const extraction = await extractPdfDocumentText(buffer);
+		if (!extraction) throw new Error('Texte du PDF illisible.');
 		const fullText = extraction.text;
 		const fullKind = explicitKind ?? classifyWithFileName(fullText, fileName, fallbackKind);
 		const allPageIndexes = Array.from({ length: pageCount }, (_, index) => index);
 
-		if (pageCount <= 1 || explicitKind) {
+		// Pages copied out of an encrypted PDF by pdf-lib stay encrypted and unreadable: keep it whole.
+		if (pageCount <= 1 || explicitKind || source.isEncrypted) {
 			return [
 				{
 					kind: fullKind,
@@ -223,7 +227,7 @@ export async function splitAndClassifyDocument(
 			})
 		);
 	} catch {
-		const text = extractPdfTextFromBuffer(buffer);
+		const text = extraction?.text || extractPdfTextFromBuffer(buffer);
 		return [
 			{
 				kind: classifyWithFileName(text, fileName, fallbackKind),
