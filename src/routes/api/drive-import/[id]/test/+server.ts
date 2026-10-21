@@ -7,6 +7,7 @@ import {
 } from '$lib/server/documentAnalysis';
 import { driveDownloadById, driveEnabled } from '$lib/server/googleDrive';
 import { splitAndClassifyDocument } from '$lib/server/pdfParts';
+import { splitAndClassifyDocument } from '$lib/server/pdfParts';
 
 /** Dry run: analyses one Drive document and reports what was found, without saving anything. */
 export const GET: RequestHandler = async ({ params, url }) => {
@@ -27,6 +28,8 @@ export const GET: RequestHandler = async ({ params, url }) => {
 	const analysis = analyzeDocumentText(extraction.text);
 	// Same split/classification as the real import, to explain what it will do.
 	const parts = await splitAndClassifyDocument(file.meta.name, file.meta.mimeType ?? '', file.content, 'Autre');
+	// Same split/classification as the real import, to explain what it will do.
+	const parts = await splitAndClassifyDocument(file.meta.name, file.meta.mimeType ?? '', file.content, 'Autre');
 
 	return json({
 		name: file.meta.name,
@@ -36,6 +39,12 @@ export const GET: RequestHandler = async ({ params, url }) => {
 		textStart: extraction.text.slice(0, url.searchParams.has('full') ? 8000 : 300),
 		fields: analysis.fields,
 		notes: analysis.notes,
+		parts: parts.map((part) => ({
+			kind: part.kind,
+			pages: `${part.pageStart}-${part.pageEnd}`,
+			fields: analyzeDocumentText(part.text).fields,
+			textStart: part.text.slice(0, 200)
+		})),
 		parts: parts.map((part) => ({
 			kind: part.kind,
 			pages: `${part.pageStart}-${part.pageEnd}`,
