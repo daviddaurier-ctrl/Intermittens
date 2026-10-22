@@ -103,13 +103,13 @@ export function companyShortName(company: Pick<Company, 'name' | 'legalName'> & 
 		.split(/[^A-Za-z0-9]+/)
 		.filter((word) => word && !SMALL_WORDS.has(word.toLowerCase()) && !LEGAL_FORMS.has(word.toLowerCase()));
 	if (!words.length) return source.trim();
-	// Theatre/dance companies: "Compagnie Les Oiseaux" → "CIE Oiseaux".
+	// Theatre/dance companies: "Compagnie Les Oiseaux" → "Cie Oiseaux".
 	if (/^(?:compagnie|cie)$/i.test(words[0]) && words.length > 1) {
 		const rest = words
 			.slice(1)
 			.map((word) => word[0].toUpperCase() + word.slice(1).toLowerCase())
 			.join(' ');
-		return `CIE ${rest}`;
+		return `Cie ${rest}`;
 	}
 	if (words.length === 1) return words[0].toUpperCase();
 	return words.map((word) => word[0].toUpperCase()).join('');
