@@ -6,7 +6,8 @@ import { searchCompanies } from '$lib/server/companySearch';
 import {
 	deriveMissingPayFields,
 	findProjectForProduction,
-	importedContractTitle
+	importedContractTitle,
+	contractTitleFor
 } from '$lib/server/contractImport';
 import { analyzeDocumentText } from '$lib/server/documentAnalysis';
 import {
@@ -934,10 +935,11 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 				createdNewContract || Boolean(productionName) || contract.title.startsWith('Contrat - ');
 
 			if (titleSubject && shouldRefreshTitle) {
-				const nextTitle = importedContractTitle(
-					titleSubject,
-					contract.startDate || combinedFields.startDate || contract.endDate
-				);
+				const dateValue = contract.startDate || combinedFields.startDate || contract.endDate;
+				// Titles always start with the production company's short name ("FAP · …").
+				const nextTitle = company
+					? contractTitleFor(company, linkedProject, dateValue)
+					: importedContractTitle(titleSubject, dateValue);
 				if (contract.title !== nextTitle) {
 					contract.title = nextTitle;
 					contract.updatedAt = new Date().toISOString();

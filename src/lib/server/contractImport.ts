@@ -1,4 +1,4 @@
-import type { ContractFields, Project } from '$lib/types';
+import type { AppData, Company, ContractFields, Project } from '$lib/types';
 
 type ContractPayFields = Pick<
 	ContractFields,
@@ -84,4 +84,43 @@ export function deriveMissingPayFields(contract: ContractPayFields) {
 	}
 
 	return derived;
+}
+
+const SMALL_WORDS = new Set(['de', 'du', 'des', 'la', 'le', 'les', 'l', 'd', 'et', 'en', 'a', 'au', 'aux']);
+const LEGAL_FORMS = new Set(['sarl', 'sas', 'sasu', 'eurl', 'sa', 'scop', 'snc', 'sci', 'scic', 'ste']);
+
+/**
+ * Short name of a production company, used to start every contract title:
+ * initials of a multi-word name ("Futur Antérieur Production" → "FAP"),
+ * the word itself for a one-word name. `company.shortName` overrides it.
+ */
+export function companyShortName(company: Pick<Company, 'name' | 'legalName'> & { shortName?: string }) {
+	if (company.shortName?.trim()) return company.shortName.trim();
+	const source = (company.name || company.legalName || '').split('(')[0];
+	const words = source
+		.normalize('NFD')
+		.replace(/\p{Diacritic}/gu, '')
+		.split(/[^A-Za-z0-9]+/)
+		.filter((word) => word && !SMALL_WORDS.has(word.toLowerCase()) && !LEGAL_FORMS.has(word.toLowerCase()));
+	if (!words.length) return source.trim();
+	if (words.length === 1) return words[0].toUpperCase();
+	return words.map((word) => word[0].toUpperCase()).join('');
+}
+
+/** "FAP · Projet · octobre 2026": always starts with the production company's short name. */
+export function contractTitleFor(company: Company | undefined, project: Project | undefined, dateValue: string) {
+	const parts = [company ? companyShortName(company) : '', project?.name.trim() ?? '', importMonthLabel(dateValue)];
+	return parts.filter(Boolean).join(' · ');
+}
+
+/** Rewrites every contract title that has a known company so it follows contractTitleFor. */
+export function retitleContracts(data: AppData) {
+	for (const contract of data.contracts) {
+		const company = data.companies.find((item) => item.id === contract.companyId);
+		if (!company) continue;
+		const project = data.projects.find((item) => item.id === contract.projectId);
+		const title = contractTitleFor(company, project, contract.startDate || contract.endDate);
+		if (title && contract.title !== title) contract.title = title;
+	}
+	return data;
 }

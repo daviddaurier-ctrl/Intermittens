@@ -24,6 +24,8 @@ export type Company = {
 	legalCategory: string;
 	activityLabel: string;
 	color: string;
+	/** Optional short name starting contract titles (default: initials of the name). */
+	shortName?: string;
 	source: string;
 	sourceUpdatedAt: string;
 	notes: string;

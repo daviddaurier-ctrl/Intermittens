@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { defaultCompanyColor, normalizeCompanyColor } from '$lib/companyColors';
+import { retitleContracts } from '$lib/server/contractImport';
 import {
 	DOCUMENT_TYPE_FOLDERS,
 	driveDailyBackup,
@@ -239,6 +240,7 @@ function normalizeCompany(company: Partial<Company>): Company {
 		legalCategory: cleanString(company.legalCategory),
 		activityLabel: cleanString(company.activityLabel),
 		color: normalizeCompanyColor(cleanString(company.color), `${id}:${name}`),
+		...(cleanString(company.shortName) ? { shortName: cleanString(company.shortName) } : {}),
 		source: cleanString(company.source),
 		sourceUpdatedAt: cleanString(company.sourceUpdatedAt),
 		notes: cleanString(company.notes)
@@ -522,7 +524,7 @@ export function normalizeData(input: Partial<AppData>): AppData {
 	const defaults = createDefaultData();
 	const settings = { ...defaults.settings, ...(input.settings ?? {}) };
 
-	return fixTechnicalStatuses({
+	return retitleContracts(fixTechnicalStatuses({
 		version: 1,
 		updatedAt: now(),
 		companies: Array.isArray(input.companies) ? input.companies.map(normalizeCompany) : [],
@@ -608,7 +610,7 @@ export function normalizeData(input: Partial<AppData>): AppData {
 						)
 					: {}
 		}
-	});
+	}));
 }
 
 async function writeJson(data: AppData) {
