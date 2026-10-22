@@ -635,6 +635,45 @@ async function writeJson(data: AppData) {
 	await rename(tmpFile, dataFile);
 }
 
+const SHORT_NAMES_FILE = 'sigles.json';
+let shortNamesCache: { at: number; map: Record<string, string> } | undefined;
+
+function plainName(value: string) {
+	return value
+		.normalize('NFD')
+		.replace(/\p{Diacritic}/gu, '')
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, ' ')
+		.trim();
+}
+
+/**
+ * Optional "sigles.json" next to the data file: { "<start of a company name>": "<short name>" }.
+ * Sets company.shortName (the start of contract titles) without editing the data by hand.
+ */
+async function applyShortNameOverrides(data: AppData) {
+	try {
+		if (!shortNamesCache || Date.now() - shortNamesCache.at > 60_000) {
+			const raw = await driveReadFile('root', SHORT_NAMES_FILE);
+			const parsed = raw ? JSON.parse(raw.toString('utf-8')) : {};
+			shortNamesCache = { at: Date.now(), map: parsed && typeof parsed === 'object' ? parsed : {} };
+		}
+		const entries = Object.entries(shortNamesCache.map).filter(
+			([key, value]) => plainName(key) && typeof value === 'string' && value.trim()
+		);
+		if (!entries.length) return data;
+		for (const company of data.companies) {
+			const name = plainName(company.name || company.legalName);
+			const match = entries.find(([key]) => name.startsWith(plainName(key)));
+			if (match) company.shortName = match[1].trim();
+		}
+		return retitleContracts(data);
+	} catch (cause) {
+		console.error('sigles.json illisible', cause);
+		return data;
+	}
+}
+
 export async function readData(): Promise<AppData> {
 	if (useDrive()) {
 		const raw = await driveReadFile('root', dataFileName);
@@ -643,7 +682,7 @@ export async function readData(): Promise<AppData> {
 			await writeJson(initial);
 			return initial;
 		}
-		return normalizeData(JSON.parse(raw.toString('utf-8')) as AppData);
+		return applyShortNameOverrides(normalizeData(JSON.parse(raw.toString('utf-8')) as AppData));
 	}
 	await ensureDataFiles();
 	const raw = await readFile(dataFile, 'utf-8');
