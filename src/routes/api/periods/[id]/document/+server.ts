@@ -1,5 +1,6 @@
 import { error, type RequestHandler } from '@sveltejs/kit';
 
+import { inlineContentDisposition } from '$lib/server/contentDisposition';
 import { readData, readStoredFile } from '$lib/server/storage';
 
 export const GET: RequestHandler = async ({ params }) => {
@@ -13,7 +14,7 @@ export const GET: RequestHandler = async ({ params }) => {
 	return new Response(file, {
 		headers: {
 			'content-type': 'application/octet-stream',
-			'content-disposition': `inline; filename="${period.sourceFileName.replace(/"/g, '')}"`
+			'content-disposition': inlineContentDisposition(period.sourceFileName)
 		}
 	});
 };

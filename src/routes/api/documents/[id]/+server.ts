@@ -1,5 +1,6 @@
 import { error, json, type RequestHandler } from '@sveltejs/kit';
 
+import { inlineContentDisposition } from '$lib/server/contentDisposition';
 import { deleteStoredFiles, mutateData, readData, readStoredFile } from '$lib/server/storage';
 
 export const GET: RequestHandler = async ({ params }) => {
@@ -12,8 +13,8 @@ export const GET: RequestHandler = async ({ params }) => {
 
 	return new Response(file, {
 		headers: {
-			'content-type': document.mimeType,
-			'content-disposition': `inline; filename="${document.fileName.replace(/"/g, '')}"`
+			'content-type': document.mimeType || 'application/octet-stream',
+			'content-disposition': inlineContentDisposition(document.fileName)
 		}
 	});
 };
