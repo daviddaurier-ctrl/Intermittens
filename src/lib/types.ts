@@ -332,7 +332,12 @@ export type MonthlyStats = {
 	label: string;
 	hours: number;
 	cachets: number;
+	/** Includes the estimated net of contracts without payslip. */
 	netSalary: number;
+	/** Net of the payslips received only. */
+	paidNetSalary: number;
+	/** Part of netSalary that is estimated (contracts without payslip). */
+	estimatedNetPart: number;
 	taxableNetSalary: number;
 	grossSalary: number;
 	contributions: number;

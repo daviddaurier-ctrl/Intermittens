@@ -1,4 +1,4 @@
-import { contractNet, contractTaxableNet } from '$lib/netEstimate';
+import { contractNet, contractTaxableNet, netIsEstimated } from '$lib/netEstimate';
 import type {
 	AppData,
 	Contract,
@@ -266,6 +266,8 @@ export function buildMonthlyStats(data: AppData): MonthlyStats[] {
 			hours: 0,
 			cachets: 0,
 			netSalary: 0,
+			paidNetSalary: 0,
+			estimatedNetPart: 0,
 			taxableNetSalary: 0,
 			grossSalary: 0,
 			contributions: 0,
@@ -297,6 +299,8 @@ export function buildMonthlyStats(data: AppData): MonthlyStats[] {
 			stats.hours += hours;
 			stats.cachets += contract.cachets * split.ratio;
 			stats.netSalary += contractNet(contract) * split.ratio;
+			stats.paidNetSalary += contract.netSalary * split.ratio;
+			if (netIsEstimated(contract)) stats.estimatedNetPart += contractNet(contract) * split.ratio;
 			stats.taxableNetSalary += contractTaxableNet(contract) * split.ratio;
 			stats.grossSalary += contract.grossSalary * split.ratio;
 			stats.contributions += contract.contributions * split.ratio;
@@ -323,6 +327,8 @@ export function buildMonthlyStats(data: AppData): MonthlyStats[] {
 				hours: round(stats.hours),
 				cachets: round(stats.cachets),
 				netSalary: round(stats.netSalary),
+				paidNetSalary: round(stats.paidNetSalary),
+				estimatedNetPart: round(stats.estimatedNetPart),
 				taxableNetSalary: round(stats.taxableNetSalary),
 				grossSalary: round(stats.grossSalary),
 				contributions: round(stats.contributions),

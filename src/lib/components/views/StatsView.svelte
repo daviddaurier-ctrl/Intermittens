@@ -43,6 +43,8 @@
 			hours: 0,
 			cachets: 0,
 			netSalary: 0,
+			paidNetSalary: 0,
+			estimatedNetPart: 0,
 			taxableNetSalary: 0,
 			grossSalary: 0,
 			contributions: 0,

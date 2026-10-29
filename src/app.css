@@ -681,6 +681,11 @@ tr.has-contracts.selected {
 	font-size: 19px;
 }
 
+.month-focus small {
+	color: #9b4d72;
+	font-size: 11px;
+}
+
 .document-completeness {
 	display: flex;
 	gap: 8px;

@@ -325,7 +325,17 @@
 				</div>
 				<div>
 					<span>Salaire net</span>
+					<strong>{formatCurrency(appState.selectedMonthStats.paidNetSalary)}</strong>
+					<small>bulletins reçus</small>
+				</div>
+				<div>
+					<span>Salaire net estimé</span>
 					<strong>{formatCurrency(appState.selectedMonthStats.netSalary)}</strong>
+					<small>
+						{appState.selectedMonthStats.estimatedNetPart > 0
+							? `dont ≈ ${formatCurrency(appState.selectedMonthStats.estimatedNetPart)} sans bulletin`
+							: 'tout est sur bulletin'}
+					</small>
 				</div>
 				<div>
 					<span>Indemnité estimée</span>
