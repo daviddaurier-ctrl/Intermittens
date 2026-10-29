@@ -53,18 +53,17 @@
 						{/if}
 					</span>
 				</div>
-				<a href={`${base}/api/documents/${document.id}`} target="_blank" rel="noreferrer">Ouvrir</a>
-				{#if Object.keys(document.extractedFields).length}
-					<button
-						type="button"
-						title="Appliquer les champs détectés"
-						onclick={() => state.applyFields(contract, document.extractedFields)}
-					>
-						Appliquer
-					</button>
-				{/if}
+				<a
+					class="document-open"
+					href={`${base}/api/documents/${document.id}`}
+					target="_blank"
+					rel="noreferrer"
+					title={`Ouvrir ${document.fileName}`}
+				>
+					OUVRIR
+				</a>
 				<button
-					class="danger"
+					class="danger document-delete"
 					type="button"
 					title={`Supprimer ${document.fileName}`}
 					aria-label={`Supprimer le document ${document.fileName}`}

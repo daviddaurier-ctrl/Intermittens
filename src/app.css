@@ -1165,8 +1165,33 @@ input[aria-invalid='true'] {
 }
 
 .document-item {
-	grid-template-columns: minmax(0, 1fr) auto auto auto;
+	grid-template-columns: minmax(0, 1fr) auto auto;
 	align-items: center;
+}
+
+.document-open {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 40px;
+	padding: 8px 22px;
+	border-radius: 8px;
+	background: #d62470;
+	color: #fff;
+	font-size: 15px;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-decoration: none;
+}
+
+.document-open:hover {
+	background: #b81c5f;
+}
+
+.document-item .document-delete {
+	min-height: 0;
+	padding: 4px 8px;
+	font-size: 11px;
 }
 
 .document-main,
