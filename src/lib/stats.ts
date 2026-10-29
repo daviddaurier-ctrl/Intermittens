@@ -1,3 +1,4 @@
+import { contractNet, contractTaxableNet } from '$lib/netEstimate';
 import type {
 	AppData,
 	Contract,
@@ -182,7 +183,7 @@ export function calculateReference(data: AppData) {
 		(total, contract) => total + contract.grossSalary,
 		0
 	);
-	const netSalary = eligibleContracts.reduce((total, contract) => total + contract.netSalary, 0);
+	const netSalary = eligibleContracts.reduce((total, contract) => total + contractNet(contract), 0);
 	const paidContracts = eligibleContracts.filter((contract) => contract.status === 'Payé').length;
 	const signedContracts = eligibleContracts.filter(
 		(contract) => contract.status === 'Signé'
@@ -295,8 +296,8 @@ export function buildMonthlyStats(data: AppData): MonthlyStats[] {
 			const hours = contractRecognizedHours(contract) * split.ratio;
 			stats.hours += hours;
 			stats.cachets += contract.cachets * split.ratio;
-			stats.netSalary += contract.netSalary * split.ratio;
-			stats.taxableNetSalary += contract.taxableNetSalary * split.ratio;
+			stats.netSalary += contractNet(contract) * split.ratio;
+			stats.taxableNetSalary += contractTaxableNet(contract) * split.ratio;
 			stats.grossSalary += contract.grossSalary * split.ratio;
 			stats.contributions += contract.contributions * split.ratio;
 			stats.contractCount += split.ratio;
@@ -363,8 +364,8 @@ export function buildMonthlyContractBreakdown(
 					ratio: split.ratio,
 					hours: round(contractRecognizedHours(contract) * split.ratio),
 					cachets: round(contract.cachets * split.ratio),
-					netSalary: round(contract.netSalary * split.ratio),
-					taxableNetSalary: round(contract.taxableNetSalary * split.ratio),
+					netSalary: round(contractNet(contract) * split.ratio),
+					taxableNetSalary: round(contractTaxableNet(contract) * split.ratio),
 					grossSalary: round(contract.grossSalary * split.ratio),
 					contributions: round(contract.contributions * split.ratio)
 				}

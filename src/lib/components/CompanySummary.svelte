@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { IntermittensState } from '$lib/app/state.svelte';
 	import { formatCurrency, formatDate, formatNumber } from '$lib/format';
+	import { contractNet } from '$lib/netEstimate';
 	import type { Company } from '$lib/types';
 
 	let {
@@ -20,7 +21,7 @@
 		)
 	);
 	let totalHours = $derived(contracts.reduce((total, contract) => total + contract.hours, 0));
-	let totalNet = $derived(contracts.reduce((total, contract) => total + contract.netSalary, 0));
+	let totalNet = $derived(contracts.reduce((total, contract) => total + contractNet(contract), 0));
 	let totalGross = $derived(contracts.reduce((total, contract) => total + contract.grossSalary, 0));
 
 	function valueOrDash(value: string) {

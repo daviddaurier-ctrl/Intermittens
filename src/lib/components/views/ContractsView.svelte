@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { salaryFollowUp, workForProject } from '$lib/contractFollowUp';
+	import { netIsEstimated } from '$lib/netEstimate';
 	import { formatPreciseCurrency as formatMoney } from '$lib/format';
 	import { statuses, type IntermittensState } from '$lib/app/state.svelte';
 	import DateInput from '$lib/components/DateInput.svelte';
@@ -259,6 +260,8 @@
 						<i>
 							{#if contract.netSalary > 0}
 								{formatCurrency(contract.netSalary)} net
+							{:else if netIsEstimated(contract)}
+								≈ {formatCurrency(contract.estimatedNetSalary ?? 0)} net estimé
 							{:else if contract.grossSalary > 0}
 								{formatCurrency(contract.grossSalary)} brut
 							{:else}
@@ -407,7 +410,17 @@
 						step="0.01"
 						bind:value={appState.selectedContract.netSalary}
 						onchange={() => appState.updateRates(appState.selectedContract!)}
+						placeholder={netIsEstimated(appState.selectedContract)
+							? `≈ ${appState.selectedContract.estimatedNetSalary} (estimation)`
+							: ''}
 					/>
+					{#if netIsEstimated(appState.selectedContract)}
+						<small class="hint">
+							Pas encore de bulletin : net estimé ≈ {formatMoney(appState.selectedContract.estimatedNetSalary ?? 0)}
+							(net imposable ≈ {formatMoney(appState.selectedContract.estimatedTaxableNetSalary ?? 0)}),
+							d’après {appState.selectedContract.netEstimateBasis}. Remplacé par le vrai montant à l’arrivée du bulletin.
+						</small>
+					{/if}
 				</label>
 				<label>
 					<span>Net imposable</span>

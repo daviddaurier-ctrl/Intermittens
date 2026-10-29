@@ -1,3 +1,4 @@
+import { contractNet, contractTaxableNet } from '$lib/netEstimate';
 import type { AppData, RoyaltyPayment, RoyaltySource } from '$lib/types';
 
 export const royaltySources: RoyaltySource[] = ['SACEM', 'SACD', 'SCAM', 'Droits directs', 'Autre'];
@@ -96,9 +97,9 @@ export function buildYearOverview(data: AppData, year: string): YearOverview {
 	const payments = data.royalties.filter((payment) => paymentYear(payment) === year);
 	const contracts = data.contracts.filter((contract) => contract.startDate.slice(0, 4) === year);
 	const royalties = sumRoyalties(payments);
-	const salaryNet = round2(contracts.reduce((total, item) => total + item.netSalary, 0));
+	const salaryNet = round2(contracts.reduce((total, item) => total + contractNet(item), 0));
 	const salaryTaxable = round2(
-		contracts.reduce((total, item) => total + (item.taxableNetSalary || item.netSalary), 0)
+		contracts.reduce((total, item) => total + contractTaxableNet(item), 0)
 	);
 	const salaryGross = round2(contracts.reduce((total, item) => total + item.grossSalary, 0));
 	const totalNet = salaryNet + royalties.net;

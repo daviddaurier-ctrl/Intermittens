@@ -7,6 +7,7 @@
 	import ImportFeedback from '$lib/components/ImportFeedback.svelte';
 	import { buildHoursOutlook, buildMonthlyContractBreakdown, contractRecognizedHours, monthLabel } from '$lib/stats';
 	import { remainingContractWork } from '$lib/contractFollowUp';
+	import { contractNet, netIsEstimated } from '$lib/netEstimate';
 	import type { Contract } from '$lib/types';
 
 	let { state: appState }: { state: IntermittensState } = $props();
@@ -288,7 +289,7 @@
 							<td>{appState.projectName(contract.projectId)}</td>
 							<td>{formatDate(contract.startDate)} - {formatDate(contract.endDate)}</td>
 							<td>{formatNumber(contractRecognizedHours(contract), 0)}</td>
-							<td>{formatCurrency(contract.netSalary)}</td>
+							<td>{netIsEstimated(contract) ? '≈ ' : ''}{formatCurrency(contractNet(contract))}</td>
 							<td><span class="status" data-status={contract.status}>{contract.status}</span></td>
 							<td><DocumentPresence documents={appState.documentsFor(contract)} {contract} /></td>
 						</tr>

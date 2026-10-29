@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { defaultCompanyColor, normalizeCompanyColor } from '$lib/companyColors';
+import { estimateNetSalaries } from '$lib/netEstimate';
 import { retitleContracts } from '$lib/server/contractImport';
 import {
 	DOCUMENT_TYPE_FOLDERS,
@@ -524,7 +525,7 @@ export function normalizeData(input: Partial<AppData>): AppData {
 	const defaults = createDefaultData();
 	const settings = { ...defaults.settings, ...(input.settings ?? {}) };
 
-	return retitleContracts(fixTechnicalStatuses({
+	return estimateNetSalaries(retitleContracts(fixTechnicalStatuses({
 		version: 1,
 		updatedAt: now(),
 		companies: Array.isArray(input.companies) ? input.companies.map(normalizeCompany) : [],
@@ -610,7 +611,7 @@ export function normalizeData(input: Partial<AppData>): AppData {
 						)
 					: {}
 		}
-	}));
+	})));
 }
 
 async function writeJson(data: AppData) {

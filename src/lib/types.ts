@@ -81,6 +81,10 @@ export type ContractFields = {
 export type Contract = ContractFields & {
 	id: string;
 	documentIds: string[];
+	/** Computed on read (see netEstimate.ts) while no payslip gives the real net. */
+	estimatedNetSalary?: number;
+	estimatedTaxableNetSalary?: number;
+	netEstimateBasis?: string;
 	createdAt: string;
 	updatedAt: string;
 };
