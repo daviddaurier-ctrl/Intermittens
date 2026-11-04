@@ -31,7 +31,9 @@ import type {
 	RoyaltyPayment,
 	RoyaltySource,
 	RoyaltyStatus,
+	DeclarationStatus,
 	TaxYearSettings,
+	WorkFormat,
 	WorkKind
 } from '$lib/types';
 
@@ -675,6 +677,83 @@ async function applyShortNameOverrides(data: AppData) {
 	}
 }
 
+const WORK_FIXES_FILE = 'oeuvres-corrections.json';
+
+type WorkFix = {
+	title: string;
+	kind?: WorkKind;
+	format?: WorkFormat;
+	society?: RoyaltySource;
+	producer?: string;
+	declarations?: { society: RoyaltySource; status: DeclarationStatus; reference?: string }[];
+};
+
+let workFixesCache: { at: number; list: WorkFix[] } | undefined;
+
+/**
+ * Optional "oeuvres-corrections.json" next to the data file: { "works": [WorkFix…] }.
+ * Each entry is applied once, then remembered in settings.appliedWorkFixes so later edits
+ * made in the app win: it sets the format, kind, society or producer of the work with that
+ * title and the status of its declarations, creating the work if it does not exist yet.
+ */
+async function applyWorkFixes(data: AppData) {
+	try {
+		if (!workFixesCache || Date.now() - workFixesCache.at > 60_000) {
+			const raw = await driveReadFile('root', WORK_FIXES_FILE);
+			const parsed = raw ? JSON.parse(raw.toString('utf-8')) : {};
+			const list: WorkFix[] = Array.isArray(parsed?.works) ? parsed.works : [];
+			workFixesCache = { at: Date.now(), list: list.filter((fix) => fix?.title?.trim()) };
+		}
+		const settings = data.settings as AppData['settings'] & { appliedWorkFixes?: string[] };
+		const applied = new Set(settings.appliedWorkFixes ?? []);
+		let changed = false;
+		for (const fix of workFixesCache.list) {
+			const key = JSON.stringify(fix);
+			if (applied.has(key)) continue;
+			const wanted = plainName(fix.title);
+			let work = data.works.find((item) => plainName(item.title) === wanted);
+			if (!work) {
+				work = normalizeWork({
+					// Stable id: the fix is re-applied on every read until the data is saved.
+					id: `work_fix_${wanted.replace(/ /g, '-').slice(0, 60)}`,
+					title: fix.title.trim(),
+					kind: fix.kind ?? 'Audiovisuel',
+					society: fix.society ?? fix.declarations?.[0]?.society ?? 'Autre',
+					producer: fix.producer ?? '',
+					notes: 'Ajoutée depuis les catalogues SACEM / SACD.'
+				});
+				data.works.push(work);
+			}
+			if (fix.kind) work.kind = fix.kind;
+			if (fix.format) work.format = fix.format;
+			if (fix.society) work.society = fix.society;
+			if (fix.producer && !work.producer) work.producer = fix.producer;
+			for (const declaration of fix.declarations ?? []) {
+				const existing = work.declarations.find((item) => item.society === declaration.society);
+				if (existing) {
+					existing.status = declaration.status;
+					if (declaration.reference) existing.reference = declaration.reference;
+				} else {
+					work.declarations.push({
+						society: declaration.society,
+						status: declaration.status,
+						date: '',
+						reference: declaration.reference ?? '',
+						notes: ''
+					});
+				}
+			}
+			applied.add(key);
+			changed = true;
+		}
+		if (changed) settings.appliedWorkFixes = [...applied];
+		return data;
+	} catch (cause) {
+		console.error('oeuvres-corrections.json illisible', cause);
+		return data;
+	}
+}
+
 export async function readData(): Promise<AppData> {
 	if (useDrive()) {
 		const raw = await driveReadFile('root', dataFileName);
@@ -683,7 +762,9 @@ export async function readData(): Promise<AppData> {
 			await writeJson(initial);
 			return initial;
 		}
-		return applyShortNameOverrides(normalizeData(JSON.parse(raw.toString('utf-8')) as AppData));
+		return applyWorkFixes(
+			await applyShortNameOverrides(normalizeData(JSON.parse(raw.toString('utf-8')) as AppData))
+		);
 	}
 	await ensureDataFiles();
 	const raw = await readFile(dataFile, 'utf-8');
