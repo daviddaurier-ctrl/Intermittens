@@ -2348,3 +2348,14 @@ tr.selected {
 .declaration-nav button {
 	min-width: 34px;
 }
+
+.document-move-select {
+	width: 100%;
+	font-size: 0.8rem;
+	padding: 0.25rem 0.4rem;
+	border-radius: 999px;
+	border: 1px dashed currentColor;
+	background: transparent;
+	color: inherit;
+	cursor: pointer;
+}

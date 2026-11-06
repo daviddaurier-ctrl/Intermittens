@@ -6,6 +6,12 @@
 	import type { Contract, DocumentKind } from '$lib/types';
 
 	let { contract, state }: { contract: Contract; state: IntermittensState } = $props();
+
+	const moveTargets = $derived(
+		state.appData.contracts
+			.filter((item) => item.id !== contract.id)
+			.toSorted((a, b) => (b.startDate || '').localeCompare(a.startDate || ''))
+	);
 </script>
 
 <section class="documents">
@@ -53,6 +59,23 @@
 						{/if}
 					</span>
 				</div>
+				<select
+					class="document-move-select"
+					value=""
+					aria-label={`Déplacer ${document.fileName} vers un autre contrat`}
+					title="Ranger ce document dans un autre contrat"
+					onchange={(event) => {
+						const target = event.currentTarget.value;
+						event.currentTarget.value = '';
+						state.moveDocument(document, target);
+					}}
+				>
+					<option value="">Déplacer vers…</option>
+					<option value="__new__">➕ Nouveau contrat</option>
+					{#each moveTargets as item}
+						<option value={item.id}>{item.title}{item.startDate ? ` (${item.startDate})` : ''}</option>
+					{/each}
+				</select>
 				<a
 					class="document-open"
 					href={`${base}/api/documents/${document.id}`}

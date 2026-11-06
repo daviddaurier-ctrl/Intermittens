@@ -618,6 +618,35 @@ export function createIntermittensState(initialData: AppData) {
 		touch();
 	}
 
+	function moveDocument(document: ContractDocument, target: string) {
+		if (!target || target === document.contractId) return;
+		const source = appData.contracts.find((item) => item.id === document.contractId);
+		let destination = appData.contracts.find((item) => item.id === target);
+
+		if (target === '__new__') {
+			const project = source ? appData.projects.find((item) => item.id === source.projectId) : undefined;
+			destination = createContract(source?.companyId ?? '', source?.projectId ?? '', project);
+			destination.title = `${source ? companyName(source.companyId) : 'Contrat'} · ${document.fileName.replace(/\.[^.]+$/, '')}`;
+			appData.contracts.unshift(destination);
+		}
+		if (!destination) return;
+
+		if (source) {
+			source.documentIds = source.documentIds.filter((id) => id !== document.id);
+			const sourceStatus = statusFromDocuments(documentsFor(source));
+			if (sourceStatus) source.status = sourceStatus;
+			source.updatedAt = new Date().toISOString();
+		}
+		if (!destination.documentIds.includes(document.id)) destination.documentIds.push(document.id);
+		document.contractId = destination.id;
+		const destinationStatus = statusFromDocuments(documentsFor(destination));
+		if (destinationStatus) destination.status = destinationStatus;
+		destination.updatedAt = new Date().toISOString();
+		if (target === '__new__') selectedContractId = destination.id;
+
+		touch();
+	}
+
 	async function removeDocument(document: ContractDocument) {
 		if (!window.confirm(`Supprimer définitivement le document « ${document.fileName} » ?`)) return;
 
@@ -1425,6 +1454,7 @@ export function createIntermittensState(initialData: AppData) {
 		updateRates,
 		setStatus,
 		changeDocumentKind,
+		moveDocument,
 		removeDocument,
 		applyFields,
 		uploadDocument,
