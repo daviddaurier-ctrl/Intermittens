@@ -935,6 +935,8 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 		}
 
 		if (contract && acceptedDocuments.length) {
+			// New documents: the ✓ « vérifié » no longer covers everything attached.
+			contract.verifiedAt = '';
 			const nextStatus = applyStatusFromDocuments(contract, acceptedDocuments);
 			if (nextStatus) {
 				appliedFields.status = nextStatus;

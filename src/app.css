@@ -2366,3 +2366,15 @@ tr.selected {
 	opacity: 0.6;
 	font-size: 0.85em;
 }
+
+.verified-check {
+	margin-left: 0.35em;
+	color: #1f9d55;
+	font-weight: 700;
+}
+
+.verify-toggle.active {
+	background: #1f9d55 !important;
+	border-color: #1f9d55 !important;
+	color: #fff !important;
+}

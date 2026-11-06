@@ -295,6 +295,7 @@ function normalizeContract(contract: Partial<Contract>): Contract {
 						: 'Estimation',
 		notes: cleanString(contract.notes),
 		documentIds: Array.isArray(contract.documentIds) ? contract.documentIds.map(String) : [],
+		verifiedAt: cleanString(contract.verifiedAt),
 		createdAt,
 		updatedAt
 	};

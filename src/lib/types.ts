@@ -75,6 +75,8 @@ export type ContractFields = {
 	netHourlyRate: number;
 	grossHourlyRate: number;
 	status: ContractStatus;
+	/** Date the documents were checked against the contract (shows a ✓); empty = not checked. */
+	verifiedAt?: string;
 	notes: string;
 };
 

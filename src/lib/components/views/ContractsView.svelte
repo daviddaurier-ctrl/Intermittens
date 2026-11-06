@@ -251,6 +251,7 @@
 							aria-hidden="true"
 						></span>
 						{contract.title}
+						{#if contract.verifiedAt}<span class="verified-check" title={`Documents vérifiés le ${formatDate(contract.verifiedAt)}`}>✓</span>{/if}
 					</strong>
 					<span>
 						{appState.companyName(contract.companyId)} · {appState.projectName(contract.projectId)} ·
@@ -323,6 +324,21 @@
 						{status}
 					</button>
 				{/each}
+				<button
+					type="button"
+					class="verify-toggle"
+					class:active={Boolean(appState.selectedContract.verifiedAt)}
+					title="Marquer les documents de ce contrat comme vérifiés"
+					onclick={() => {
+						const contract = appState.selectedContract!;
+						contract.verifiedAt = contract.verifiedAt ? '' : new Date().toISOString().slice(0, 10);
+						appState.touch();
+					}}
+				>
+					{appState.selectedContract.verifiedAt
+						? `✓ Vérifié le ${formatDate(appState.selectedContract.verifiedAt)}`
+						: 'Marquer vérifié'}
+				</button>
 			</div>
 
 			<div class="form-grid">

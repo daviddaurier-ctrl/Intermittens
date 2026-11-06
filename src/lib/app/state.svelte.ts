@@ -638,6 +638,8 @@ export function createIntermittensState(initialData: AppData) {
 			source.updatedAt = new Date().toISOString();
 		}
 		if (!destination.documentIds.includes(document.id)) destination.documentIds.push(document.id);
+		destination.verifiedAt = '';
+		if (source) source.verifiedAt = '';
 		document.contractId = destination.id;
 		const destinationStatus = statusFromDocuments(documentsFor(destination));
 		if (destinationStatus) destination.status = destinationStatus;
