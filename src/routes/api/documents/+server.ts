@@ -31,6 +31,7 @@ import {
 	syncHeaders
 } from '$lib/server/remoteSync';
 import { extractAnalytique, linkContractToProject } from '$lib/server/projectFromPayslip';
+import { isAuthorRightsContract, routeAuthorContract } from '$lib/server/authorContract';
 import { analyzeCongesStatement } from '$lib/server/congesAnalysis';
 import { analyzeRoyaltyStatement } from '$lib/server/royaltyAnalysis';
 import { analyzeSacemAccount, isSacemWorksDetail, parseSacemWorksDetail } from '$lib/server/sacemAnalysis';
@@ -803,6 +804,15 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 			.find((document) => document.kind === 'Contrat' && document.extractedFields.title)
 			?.extractedFields.title?.trim() ?? '';
 
+	const authorContract =
+		preparedDocuments.length > 0 &&
+		preparedDocuments.every((document) => document.kind === 'Contrat') &&
+		isAuthorRightsContract(combinedText);
+	const authorTitle =
+		productionName ||
+		(/Titre\s*(?:provisoire)?\s*:\s*[«"“]\s*([^»"”]{2,100})/i.exec(combinedText)?.[1] ?? '').trim();
+	let authorContractRouted = false;
+
 	let data = await mutateData((current) => {
 		const detectedCompanyId = detectCompanyId(current, combinedText);
 		const matchedProject =
@@ -847,6 +857,26 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 			}
 		}
 
+		// Author-rights contracts: file them by title under the right film, never into a salary match.
+		if (!contract && autoRoute && authorContract && authorTitle) {
+			const company = current.companies.find((item) => item.id === routedCompanyId);
+			const routed = routeAuthorContract(
+				current,
+				authorTitle,
+				routedCompanyId,
+				company?.shortName || company?.name || '',
+				newContractId
+			);
+			contract = routed.contract;
+			createdNewContract = routed.created;
+			authorContractRouted = true;
+			notes.push(
+				routed.created
+					? `Contrat de cession de droits d’auteur : fiche « droits d’auteur » créée pour ${authorTitle}.`
+					: `Contrat de cession de droits d’auteur rangé avec « ${contract.title} » (salaire inchangé).`
+			);
+		}
+
 		if (!contract) {
 			contract = findExistingContract(
 				current,
@@ -872,6 +902,7 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 			}
 			if (
 				autoRoute &&
+				!authorContractRouted &&
 				matchedProject &&
 				(!contract.companyId || contract.companyId === matchedProject.companyId)
 			) {
@@ -890,7 +921,9 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 				if (detectedCompanyId && !document.extractedFields.companyId) {
 					document.extractedFields.companyId = detectedCompanyId;
 				}
-				mergeAppliedFields(appliedFields, mergeDetectedFields(contract, document.extractedFields));
+				if (!authorContract) {
+					mergeAppliedFields(appliedFields, mergeDetectedFields(contract, document.extractedFields));
+				}
 
 				const conflicts = findDocumentConflicts(current.documents, document, contract.id);
 				if (conflicts.notes.length) {
@@ -914,14 +947,14 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 		}
 
 		// Payslips name the production on their "Analytique" line: file the contract under it.
-		if (contract && autoRoute && !contract.projectId) {
+		if (contract && autoRoute && !authorContractRouted && !contract.projectId) {
 			const analytique = extractAnalytique(
 				[...preparedDocumentTexts.values(), ...parts.map((part) => part.text)].join('\n')
 			);
 			if (analytique) linkContractToProject(current, contract, analytique);
 		}
 
-		if (contract && autoRoute) {
+		if (contract && autoRoute && !authorContractRouted) {
 			const linkedProject = current.projects.find((project) => project.id === contract.projectId);
 			const company = current.companies.find((item) => item.id === contract.companyId);
 			const titleSubject =
