@@ -27,6 +27,17 @@
 
 	let { state: appState }: { state: IntermittensState } = $props();
 
+	/** The contract named at the end of « Montant promis lu dans : … · fichier.pdf ». */
+	function promisedSourceDocument(notes: string) {
+		const name = notes.slice(notes.lastIndexOf(' · ') + 3).normalize('NFC').trim();
+		if (!name) return undefined;
+		const documents = appState.appData.documents;
+		return (
+			documents.find((document) => (document.originalFileName || '').normalize('NFC') === name) ??
+			documents.find((document) => (document.fileName || '').normalize('NFC') === name)
+		);
+	}
+
 	const statuses: RoyaltyStatus[] = ['Attendu', 'Reçu', 'Déclaré'];
 	const workKinds: WorkKind[] = ['Musique', 'Spectacle vivant', 'Audiovisuel', 'Texte', 'Autre'];
 
@@ -668,7 +679,20 @@
 				</div>
 			</div>
 			{#if selectedWork.promisedNotes}
-				<p class="hint">Montant promis lu dans : {selectedWork.promisedNotes}</p>
+				{@const promisedSource = promisedSourceDocument(selectedWork.promisedNotes)}
+				<p class="hint">
+					Montant promis lu dans :
+					{#if promisedSource}
+						{selectedWork.promisedNotes.slice(0, selectedWork.promisedNotes.lastIndexOf(' · ') + 3)}<a
+							href={`${base}/api/documents/${promisedSource.id}`}
+							target="_blank"
+							rel="noreferrer"
+							title="Ouvrir le contrat">{selectedWork.promisedNotes.slice(selectedWork.promisedNotes.lastIndexOf(' · ') + 3)}</a
+						>
+					{:else}
+						{selectedWork.promisedNotes}
+					{/if}
+				</p>
 			{/if}
 			{#if salary}
 				<h4 class="broadcast-title">Salaire de réalisation (bulletins)</h4>
