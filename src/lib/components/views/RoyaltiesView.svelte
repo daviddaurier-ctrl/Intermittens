@@ -27,6 +27,28 @@
 
 	let { state: appState }: { state: IntermittensState } = $props();
 
+	/** Year the film was made: its salary contracts, its project, the deposit date, else the first payment. */
+	function workYear(work: AuthorWork) {
+		const data = appState.appData;
+		const contractDates = work.projectId
+			? data.contracts
+					.filter((contract) => contract.projectId === work.projectId && contract.startDate)
+					.map((contract) => contract.startDate)
+			: [];
+		const project = data.projects.find((item) => item.id === work.projectId);
+		const fromTitle = /\b(19|20)\d{2}\b/.exec(work.title)?.[0];
+		const payments = data.royalties
+			.filter((royalty) => royalty.workId === work.id && royalty.paymentDate)
+			.map((royalty) => royalty.paymentDate);
+		const candidates = [
+			...contractDates,
+			project?.startDate,
+			work.depositDate,
+		].filter(Boolean) as string[];
+		const first = candidates.sort()[0] ?? (fromTitle ? `${fromTitle}` : payments.sort()[0]);
+		return first ? first.slice(0, 4) : '';
+	}
+
 	/** The contract named at the end of « Montant promis lu dans : … · fichier.pdf ». */
 	function promisedSourceDocument(notes: string) {
 		const name = notes.slice(notes.lastIndexOf(' · ') + 3).normalize('NFC').trim();
@@ -642,6 +664,7 @@
 							<span class="balance-dot" data-state={balance.state} title={balanceLabel[balance.state]}></span>
 						{/if}
 						{work.title}
+						{#if workYear(work)}<small class="work-year">{workYear(work)}</small>{/if}
 					</strong>
 					<span
 						>{work.producer || work.society}{family === 'auteur' && balance.promised

@@ -2359,3 +2359,10 @@ tr.selected {
 	color: inherit;
 	cursor: pointer;
 }
+
+.work-year {
+	margin-left: 0.4em;
+	font-weight: 400;
+	opacity: 0.6;
+	font-size: 0.85em;
+}
