@@ -419,6 +419,7 @@ function normalizeWork(work: Partial<AuthorWork>): AuthorWork {
 		projectId: cleanString(work.projectId),
 		promisedSalary: normalizeNumber(work.promisedSalary),
 		promisedCachets: normalizeNumber(work.promisedCachets),
+		remainingSetAside: Boolean(work.remainingSetAside),
 		salaryNotes: cleanString(work.salaryNotes),
 		salaryChecked: work.salaryChecked === true,
 		format: (['Documentaire', 'Mise en scène', 'Concert', 'Autre'] as const).includes(work.format as never)

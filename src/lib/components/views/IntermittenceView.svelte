@@ -8,6 +8,13 @@
 
 	let { state }: { state: IntermittensState } = $props();
 	let remainingWork = $derived(remainingContractWork(state.appData));
+	let setAsideWork = $derived(remainingContractWork(state.appData, true));
+	function toggleSetAside(id: string) {
+		const work = state.appData.works.find((w) => w.id === id);
+		if (!work) return;
+		work.remainingSetAside = !work.remainingSetAside;
+		state.touch();
+	}
 </script>
 
 <section class="view-grid two-columns">
@@ -380,7 +387,7 @@
 			>
 		</div>
 
-		{#if remainingWork.length}
+		{#if remainingWork.length || setAsideWork.length}
 			<div class="remaining-work">
 				<strong>D'après tes contrats signés</strong>
 				<ul>
@@ -389,9 +396,23 @@
 							Il te reste <strong>{item.cachets} cachet{item.cachets > 1 ? 's' : ''}</strong>
 							(≈ {item.hours} h{item.salary ? `, ${formatCurrency(item.salary)} brut` : ''}) à faire avec
 							{item.producer || 'le producteur'} pour <em>{item.title}</em>
+							<button type="button" class="set-aside-toggle" title="Probablement déjà fait : mettre de côté" onclick={() => toggleSetAside(item.id)}>Mettre de côté</button>
 						</li>
 					{/each}
 				</ul>
+				{#if setAsideWork.length}
+					<details class="set-aside-work">
+						<summary>Mis de côté, à vérifier plus tard ({setAsideWork.length}) — non comptés</summary>
+						<ul>
+							{#each setAsideWork as item}
+								<li>
+									{item.cachets} cachet{item.cachets > 1 ? 's' : ''} avec {item.producer || 'le producteur'} pour <em>{item.title}</em>
+									<button type="button" class="set-aside-toggle" onclick={() => toggleSetAside(item.id)}>Remettre</button>
+								</li>
+							{/each}
+						</ul>
+					</details>
+				{/if}
 			</div>
 		{/if}
 

@@ -46,11 +46,13 @@ export function workForProject(data: AppData, projectId: string) {
 }
 
 /** Cachets promised by the signed contracts but not yet worked (no payslip yet). */
-export function remainingContractWork(data: AppData) {
+export function remainingContractWork(data: AppData, setAside = false) {
 	return data.works
+		.filter((work) => Boolean(work.remainingSetAside) === setAside)
 		.map((work) => ({ work, followUp: salaryFollowUp(data, work) }))
 		.filter(({ followUp }) => followUp && followUp.promisedCachets && followUp.remainingCachets > 0)
 		.map(({ work, followUp }) => ({
+			id: work.id,
 			title: work.title,
 			producer: work.producer,
 			cachets: followUp!.remainingCachets,

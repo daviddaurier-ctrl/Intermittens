@@ -14,6 +14,13 @@
 
 	let outlook = $derived(buildHoursOutlook(appState.appData));
 	let remainingWork = $derived(remainingContractWork(appState.appData));
+	let setAsideWork = $derived(remainingContractWork(appState.appData, true));
+	function toggleSetAside(id: string) {
+		const work = appState.appData.works.find((w) => w.id === id);
+		if (!work) return;
+		work.remainingSetAside = !work.remainingSetAside;
+		appState.touch();
+	}
 	let remainingWorkHours = $derived(remainingWork.reduce((total, item) => total + item.hours, 0));
 	const outlookText: Record<string, string> = {
 		reached: 'Objectif atteint avec les contrats connus',
@@ -216,7 +223,7 @@
 			<div><span>Rythme nécessaire</span><strong>{formatNumber(outlook.neededPerMonth, 0)} h / mois</strong></div>
 			<div><span>Ton rythme</span><strong>{formatNumber(outlook.pacePerMonth, 0)} h / mois</strong><small>projection {formatNumber(outlook.projectedHours, 0)} h</small></div>
 		</div>
-		{#if remainingWork.length}
+		{#if remainingWork.length || setAsideWork.length}
 			<div class="remaining-work">
 				<strong>Encore à faire d'après tes contrats</strong>
 				<ul>
@@ -228,6 +235,19 @@
 						</li>
 					{/each}
 				</ul>
+				{#if setAsideWork.length}
+					<details class="set-aside-work">
+						<summary>Mis de côté, à vérifier plus tard ({setAsideWork.length}) — non comptés</summary>
+						<ul>
+							{#each setAsideWork as item}
+								<li>
+									{item.cachets} cachet{item.cachets > 1 ? 's' : ''} avec {item.producer || 'le producteur'} pour <em>{item.title}</em>
+									<button type="button" class="set-aside-toggle" onclick={() => toggleSetAside(item.id)}>Remettre</button>
+								</li>
+							{/each}
+						</ul>
+					</details>
+				{/if}
 				<small
 					>Soit ≈ {remainingWorkHours} h de plus, à compter si elles tombent avant le
 					{formatDate(outlook.anniversary)}{outlook.workedHours + outlook.plannedHours + remainingWorkHours >= outlook.target

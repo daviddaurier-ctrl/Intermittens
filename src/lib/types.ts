@@ -178,6 +178,8 @@ export type AuthorWork = {
 	/** Salary promised by the contract (gross) and number of cachets (0 = unknown). */
 	promisedSalary: number;
 	promisedCachets: number;
+	/** Remaining cachets set aside: probably already worked, to check later. */
+	remainingSetAside?: boolean;
 	salaryNotes: string;
 	salaryChecked: boolean;
 	/** Declarations of the work to the societies. */

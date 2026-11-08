@@ -21,7 +21,7 @@ const API = 'https://www.googleapis.com/drive/v3';
 const UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 
-type DriveFile = { id: string; name: string; mimeType?: string };
+type DriveFile = { id: string; name: string; mimeType?: string; size?: string; createdTime?: string };
 
 let cachedToken: { value: string; expiresAt: number } | undefined;
 let cachedRootId: string | undefined;
@@ -273,7 +273,7 @@ async function listFolderFileNames(parentId: string) {
 	do {
 		const params = new URLSearchParams({
 			q: `'${parentId}' in parents and trashed = false and mimeType != '${FOLDER_MIME}'`,
-			fields: 'nextPageToken, files(id,name)',
+			fields: 'nextPageToken, files(id,name,size,createdTime)',
 			spaces: 'drive',
 			pageSize: '1000'
 		});
@@ -292,6 +292,26 @@ async function listFolderFileNames(parentId: string) {
  * Stored names of every file the app manages: the legacy "documents" folder plus its own type
  * folders. Folders the owner created themselves inside InterMittens are never listed.
  */
+/** Every stored document with its size and creation time, to re-link drifted names. */
+export async function driveListDocumentDetails() {
+	const out: { stored: string; size: number; createdTime: string }[] = [];
+	for (const folder of DOCUMENT_TYPE_FOLDERS) {
+		const existing = subfolderIds.get(folder) ?? (await findChild(await rootFolderId(), folder, FOLDER_MIME))?.id;
+		if (!existing) continue;
+		subfolderIds.set(folder, existing);
+		for (const file of await listFolderFileNames(existing)) {
+			const stored = `${folder}/${file.name}`;
+			fileIdCache.set(`documents/${stored}`, file.id);
+			out.push({ stored, size: Number(file.size ?? 0), createdTime: file.createdTime ?? '' });
+		}
+	}
+	for (const file of await listFolderFileNames(await folderFor('documents'))) {
+		fileIdCache.set(`documents/${file.name}`, file.id);
+		out.push({ stored: file.name, size: Number(file.size ?? 0), createdTime: file.createdTime ?? '' });
+	}
+	return out;
+}
+
 export async function driveListFiles(area: 'root' | 'documents') {
 	const names: string[] = [];
 	for (const file of await listFolderFileNames(await folderFor(area))) {
