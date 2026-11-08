@@ -2395,3 +2395,20 @@ tr.selected {
 		width: 100%;
 	}
 }
+
+.role-badge {
+	display: inline-block;
+	flex: none;
+	font-size: 11px;
+	font-weight: 600;
+	padding: 2px 7px;
+	border-radius: 999px;
+	margin-right: 4px;
+	vertical-align: middle;
+}
+.role-real { background: #fde2ee; color: #a3124f; }
+.role-montage { background: #dfe7fb; color: #2a4aa8; }
+.role-autre { background: #eee; color: #666; }
+.role-filter { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+.role-filter button { padding: 4px 12px; border-radius: 999px; font-size: 13px; }
+.role-filter button.active { background: #d62470; color: #fff; }

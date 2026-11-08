@@ -76,9 +76,20 @@
 		].sort((a, b) => Number(b) - Number(a))
 	);
 
+	type Role = 'real' | 'montage' | 'autre';
+	function contractRole(contract: Contract): Role {
+		const status = contract.employmentStatus || '';
+		if (/technicien|monteur|montage/i.test(status)) return 'montage';
+		if (/artiste|réalisat/i.test(status)) return 'real';
+		return 'autre';
+	}
+	const roleLabels: Record<Role, string> = { real: 'Réalisation', montage: 'Montage', autre: 'À préciser' };
+	let roleFilter = $state<'' | Role>('');
+
 	let displayedContracts = $derived(
 		[...appState.appData.contracts]
 			.filter((contract) => contractMatchesSelectedPeriod(contract))
+			.filter((contract) => !roleFilter || contractRole(contract) === roleFilter)
 			.sort(compareContractsRecentFirst)
 	);
 
@@ -237,6 +248,11 @@
 				{/each}
 			</div>
 		{/if}
+		<div class="role-filter" role="group" aria-label="Filtrer par fonction">
+			{#each [['', 'Tous'], ['real', 'Réalisation'], ['montage', 'Montage']] as [value, label]}
+				<button type="button" class:active={roleFilter === value} onclick={() => (roleFilter = value as '' | Role)}>{label}</button>
+			{/each}
+		</div>
 		<div class="list">
 			{#each displayedContracts as contract}
 				<button
@@ -250,6 +266,7 @@
 							style={`--company-color: ${appState.companyColor(contract.companyId)}`}
 							aria-hidden="true"
 						></span>
+						<span class={`role-badge role-${contractRole(contract)}`}>{roleLabels[contractRole(contract)]}</span>
 						{contract.title}
 						{#if contract.verifiedAt}<span class="verified-check" title={`Documents vérifiés le ${formatDate(contract.verifiedAt)}`}>✓</span>{/if}
 					</strong>
