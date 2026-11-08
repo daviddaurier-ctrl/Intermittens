@@ -76,14 +76,15 @@
 		].sort((a, b) => Number(b) - Number(a))
 	);
 
-	type Role = 'real' | 'montage' | 'autre';
+	type Role = 'real' | 'montage' | 'son' | 'autre';
 	function contractRole(contract: Contract): Role {
 		const status = contract.employmentStatus || '';
+		if (/\bson\b|sonore|sound/i.test(status)) return 'son';
 		if (/technicien|monteur|montage/i.test(status)) return 'montage';
 		if (/artiste|réalisat/i.test(status)) return 'real';
 		return 'autre';
 	}
-	const roleLabels: Record<Role, string> = { real: 'Réalisation', montage: 'Montage', autre: 'À préciser' };
+	const roleLabels: Record<Role, string> = { real: 'Réalisation', montage: 'Montage', son: 'Son', autre: 'À préciser' };
 	let roleFilter = $state<'' | Role>('');
 
 	let displayedContracts = $derived(
@@ -249,7 +250,7 @@
 			</div>
 		{/if}
 		<div class="role-filter" role="group" aria-label="Filtrer par fonction">
-			{#each [['', 'Tous'], ['real', 'Réalisation'], ['montage', 'Montage']] as [value, label]}
+			{#each [['', 'Tous'], ['real', 'Réalisation'], ['montage', 'Montage'], ['son', 'Son']] as [value, label]}
 				<button type="button" class:active={roleFilter === value} onclick={() => (roleFilter = value as '' | Role)}>{label}</button>
 			{/each}
 		</div>

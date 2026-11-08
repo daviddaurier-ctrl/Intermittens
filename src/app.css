@@ -2412,3 +2412,4 @@ tr.selected {
 .role-filter { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
 .role-filter button { padding: 4px 12px; border-radius: 999px; font-size: 13px; }
 .role-filter button.active { background: #d62470; color: #fff; }
+.role-son { background: #dcf3e6; color: #1d6b40; }

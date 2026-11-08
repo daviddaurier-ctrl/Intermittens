@@ -520,16 +520,25 @@ function matchEmploymentStatus(text: string) {
 		// Technical jobs named by their title: they win over a stray "artiste" elsewhere.
 		{
 			pattern:
-				/\b(?:concepteur|conceptrice|createur|creatrice|ingenieur|ingenieure)\s+(?:du\s+|de\s+la\s+)?(?:son|sonore|lumiere|lumieres)\b/i,
+				/\b(?:concepteur|conceptrice|createur|creatrice|ingenieur|ingenieure)\s+(?:du\s+)?(?:son|sonore)\b/i,
+			label: 'Technicien (concepteur du son)'
+		},
+		{
+			pattern: /\b(?:concepteur|conceptrice|createur|creatrice|ingenieur|ingenieure)\s+(?:de\s+la\s+)?(?:lumiere|lumieres)\b/i,
 			label: 'Technicien'
 		},
 		{ pattern: /\b(?:sonorisateur|eclairagiste|machiniste|regisseuse)\b/i, label: 'Technicien' },
 		{
 			pattern:
-				/\b(?:chef\s+monteur|chef\s+monteuse|monteur|monteuse|chef\s+operateur|cadreur|cadreuse|etalonneur|etalonneuse|mixeur|mixeuse|assistant(?:e)?\s+realisat(?:eur|rice))\b/i,
+				/\b(?:chef\s+monteur|chef\s+monteuse|monteur|monteuse)\b/i,
+			label: 'Technicien (chef monteur)'
+		},
+		{
+			pattern:
+				/\b(?:chef\s+operateur|cadreur|cadreuse|etalonneur|etalonneuse|mixeur|mixeuse|assistant(?:e)?\s+realisat(?:eur|rice))\b/i,
 			label: 'Technicien'
 		},
-		{ pattern: /\brealisat(?:eur|rice)\b/i, label: 'Artiste' },
+		{ pattern: /\brealisat(?:eur|rice)\b/i, label: 'Artiste (réalisateur)' },
 		{ pattern: /\btechnicien\s+video\b/i, label: 'Technicien video' },
 		{ pattern: /\btechnicien\s+son\b/i, label: 'Technicien son' },
 		{ pattern: /\bregisseur\b/i, label: 'Regisseur' },
