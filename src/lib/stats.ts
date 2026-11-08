@@ -145,12 +145,14 @@ function splitContractAcrossMonths(contract: Contract) {
 
 export function getMonthlyInfo(data: AppData, month: string): MonthlyInfo {
 	const activePeriodId = data.settings.activePeriodId;
+	const candidates = data.monthlyInfos.filter(
+		(info) =>
+			info.month === month && (!activePeriodId || info.periodId === activePeriodId || !info.periodId)
+	);
+	// Prefer the entry that holds real France Travail figures over an empty duplicate.
 	return (
-		data.monthlyInfos.find(
-			(info) =>
-				info.month === month &&
-				(!activePeriodId || info.periodId === activePeriodId || !info.periodId)
-		) ?? {
+		candidates.find((info) => info.realIndemnity > 0 || info.dailyIndemnity > 0) ??
+		candidates[0] ?? {
 			month,
 			periodId: activePeriodId,
 			congeSpectacle: 0,
@@ -159,6 +161,29 @@ export function getMonthlyInfo(data: AppData, month: string): MonthlyInfo {
 			notes: ''
 		}
 	);
+}
+
+/**
+ * Latest month paid by France Travail: gross daily allowance (AJ brute = brut ÷ jours)
+ * and the share actually received (net after CSG/CRDS, retraite and PAS).
+ */
+export function latestPaidAllowance(data: AppData, beforeMonth = '9999-12') {
+	const activePeriodId = data.settings.activePeriodId;
+	const paid = data.monthlyInfos
+		.filter(
+			(info) =>
+				info.month < beforeMonth &&
+				info.realIndemnity > 0 &&
+				info.dailyIndemnity > 0 &&
+				(!activePeriodId || info.periodId === activePeriodId || !info.periodId)
+		)
+		.sort((a, b) => b.month.localeCompare(a.month))[0];
+	if (!paid) return undefined;
+	const days = /(\d+)\s*AJ/.exec(paid.notes)?.[1];
+	const gross = /brut\s*([\d\s]+,\d{2})/.exec(paid.notes)?.[1];
+	const grossAmount = gross ? Number(gross.replace(/\s/g, '').replace(',', '.')) : 0;
+	const netRatio = grossAmount > 0 ? paid.realIndemnity / grossAmount : days ? paid.realIndemnity / (Number(days) * paid.dailyIndemnity) : 1;
+	return { month: paid.month, dailyAllowance: paid.dailyIndemnity, netRatio: Math.min(1, Math.max(0, netRatio)) };
 }
 
 export function calculateReference(data: AppData) {
@@ -230,8 +255,14 @@ export function estimateMonthlyIndemnity(
 	grossSalary: number
 ) {
 	const info = getMonthlyInfo(data, month);
+	// Same basis as the real months: gross AJ from the last France Travail statement, then
+	// what really lands in the account (net after CSG/CRDS, retraite and PAS).
+	const latest = latestPaidAllowance(data, month);
 	const dailyAllowance =
-		info.dailyIndemnity > 0 ? info.dailyIndemnity : estimateDailyAllowance(data);
+		info.dailyIndemnity > 0
+			? info.dailyIndemnity
+			: (latest?.dailyAllowance ?? estimateDailyAllowance(data));
+	const netRatio = info.dailyIndemnity > 0 ? (latestPaidAllowance(data, '9999-12')?.netRatio ?? 1) : (latest?.netRatio ?? 1);
 	const workedDaysEstimate =
 		data.settings.monthlyWorkDayDivisor > 0
 			? Math.ceil(
@@ -239,7 +270,7 @@ export function estimateMonthlyIndemnity(
 				)
 			: 0;
 	const indemnizableDays = Math.max(0, daysInMonth(month) - workedDaysEstimate);
-	const rawIndemnity = indemnizableDays * dailyAllowance;
+	const rawIndemnity = indemnizableDays * dailyAllowance * netRatio;
 	const monthlyCap = data.settings.pmss * data.settings.cumulPmssMultiplier;
 	const cappedIndemnity =
 		monthlyCap > 0 ? Math.min(rawIndemnity, Math.max(0, monthlyCap - grossSalary)) : rawIndemnity;

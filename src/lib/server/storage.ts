@@ -351,6 +351,35 @@ function normalizePeriod(period: Partial<IntermittencePeriod>): IntermittencePer
 	};
 }
 
+/** One entry per month and period: an empty duplicate must never hide the real France Travail amounts. */
+function mergeMonthlyInfos(infos: MonthlyInfo[]) {
+	const merged = new Map<string, MonthlyInfo>();
+	for (const info of infos) {
+		const key = `${info.month}|${info.periodId}`;
+		const existing = merged.get(key);
+		if (!existing) {
+			merged.set(key, info);
+			continue;
+		}
+		existing.congeSpectacle = existing.congeSpectacle || info.congeSpectacle;
+		existing.realIndemnity = existing.realIndemnity || info.realIndemnity;
+		existing.dailyIndemnity = existing.dailyIndemnity || info.dailyIndemnity;
+		existing.notes = [existing.notes, info.notes].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(' · ');
+	}
+	// A month without a period merges into the same month of a period, when there is one.
+	for (const [key, info] of merged) {
+		if (info.periodId) continue;
+		const target = [...merged.values()].find((item) => item.month === info.month && item.periodId);
+		if (!target) continue;
+		target.congeSpectacle = target.congeSpectacle || info.congeSpectacle;
+		target.realIndemnity = target.realIndemnity || info.realIndemnity;
+		target.dailyIndemnity = target.dailyIndemnity || info.dailyIndemnity;
+		target.notes = [target.notes, info.notes].filter(Boolean).join(' · ');
+		merged.delete(key);
+	}
+	return [...merged.values()];
+}
+
 function normalizeMonthlyInfo(info: Partial<MonthlyInfo>): MonthlyInfo {
 	return {
 		month: cleanString(info.month),
@@ -540,7 +569,7 @@ export function normalizeData(input: Partial<AppData>): AppData {
 			? input.futureContracts.map(normalizeFutureContract)
 			: [],
 		monthlyInfos: Array.isArray(input.monthlyInfos)
-			? input.monthlyInfos.map(normalizeMonthlyInfo).filter((info) => info.month)
+			? mergeMonthlyInfos(input.monthlyInfos.map(normalizeMonthlyInfo).filter((info) => info.month))
 			: [],
 		works: Array.isArray(input.works) ? input.works.map(normalizeWork) : [],
 		royalties: Array.isArray(input.royalties) ? input.royalties.map(normalizeRoyalty) : [],

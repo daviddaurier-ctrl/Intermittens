@@ -308,9 +308,11 @@ export function createIntermittensState(initialData: AppData) {
 
 	function ensureMonthlyInfo(month: string): MonthlyInfo {
 		const periodId = appData.settings.activePeriodId;
-		let info = appData.monthlyInfos.find(
+		const sameMonth = appData.monthlyInfos.filter(
 			(item) => item.month === month && (!periodId || item.periodId === periodId)
 		);
+		let info =
+			sameMonth.find((item) => item.realIndemnity > 0 || item.dailyIndemnity > 0) ?? sameMonth[0];
 
 		if (!info) {
 			info = {
