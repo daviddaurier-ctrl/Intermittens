@@ -26,6 +26,9 @@ import type {
 	Project
 } from '$lib/types';
 
+/** A file to import: picked locally, or left in the Drive and read by the server (heavy files). */
+type ImportSource = File | { name: string; driveFileId: string };
+
 export type Tab =
 	| 'pilotage'
 	| 'calendrier'
@@ -813,13 +816,18 @@ export function createIntermittensState(initialData: AppData) {
 				};
 			}
 
-			const files: File[] = [];
+			const files: ImportSource[] = [];
 			const idsByName = new Map<string, string[]>();
 			for (const [index, entry] of pending.entries()) {
 				driveImportState = {
 					running: true,
 					message: `Récupération ${index + 1}/${pending.length} : ${entry.name}`
 				};
+				if ((entry as DriveFileEntry & { viaServer?: boolean }).viaServer) {
+					files.push({ name: entry.name, driveFileId: entry.id });
+					idsByName.set(entry.name, [...(idsByName.get(entry.name) ?? []), entry.id]);
+					continue;
+				}
 				const response = await fetch(`${base}/api/drive-import/${encodeURIComponent(entry.id)}`);
 				if (!response.ok) continue;
 				const blob = await response.blob();
@@ -870,7 +878,7 @@ export function createIntermittensState(initialData: AppData) {
 		}
 	}
 
-	async function importFiles(files: File[]) {
+	async function importFiles(files: ImportSource[]) {
 		if (!files.length) return { importedCount: 0, items: [] as ContractImportFeedbackItem[] };
 
 		const undoSnapshot: ContractImportUndoSnapshot = {
@@ -923,7 +931,8 @@ export function createIntermittensState(initialData: AppData) {
 			const body = new FormData();
 			body.set('autoRoute', 'true');
 			body.set('kind', 'Autre');
-			body.set('file', file);
+			if (file instanceof File) body.set('file', file);
+			else body.set('driveFileId', file.driveFileId);
 
 			let response: Response;
 			let payload: DocumentImportPayload;

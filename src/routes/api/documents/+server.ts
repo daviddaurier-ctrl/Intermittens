@@ -1,3 +1,4 @@
+import { driveDownloadById } from '$lib/server/googleDrive';
 import { error, json, type RequestHandler } from '@sveltejs/kit';
 
 import { normalizeCompanyColor } from '$lib/companyColors';
@@ -469,7 +470,16 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 	const contractId = String(form.get('contractId') ?? '');
 	const createContract = String(form.get('createContract') ?? '') === 'true';
 	const autoRoute = String(form.get('autoRoute') ?? '') === 'true';
-	const file = form.get('file');
+	let file = form.get('file');
+	const driveFileId = String(form.get('driveFileId') ?? '');
+	if (!(file instanceof File) && driveFileId) {
+		// Files too heavy to transit through the browser (Vercel body limit) are read from the Drive here.
+		const remote = await driveDownloadById(driveFileId);
+		if (!remote) error(404, 'Fichier introuvable dans le Drive.');
+		file = new File([new Uint8Array(remote.content)], remote.meta.name, {
+			type: remote.meta.mimeType ?? 'application/pdf'
+		});
+	}
 
 	if (!contractId && !createContract && !autoRoute) error(400, 'Identifiant de contrat manquant.');
 	if (!(file instanceof File)) error(400, 'Fichier manquant.');

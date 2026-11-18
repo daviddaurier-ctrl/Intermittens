@@ -39,8 +39,9 @@ export const GET: RequestHandler = async ({ url }) => {
 		const all = await driveListImportableFiles(folder.id);
 		return json({
 			folder: folder.name,
-			files: all.filter((file) => !file.size || file.size <= MAX_IMPORT_BYTES),
-			tooLarge: all.filter((file) => file.size > MAX_IMPORT_BYTES).map((file) => file.name)
+			// Heavy files are not sent through the browser: the server fetches them from the Drive.
+			files: all.map((file) => ({ ...file, viaServer: file.size > MAX_IMPORT_BYTES })),
+			tooLarge: []
 		});
 	} catch (cause) {
 		console.error(cause);
