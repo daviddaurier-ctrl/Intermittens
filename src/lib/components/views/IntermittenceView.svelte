@@ -3,10 +3,48 @@
 
 	import type { IntermittensState } from '$lib/app/state.svelte';
 	import DateInput from '$lib/components/DateInput.svelte';
-	import { formatCurrency, formatNumber, formatPreciseCurrency } from '$lib/format';
+	import { formatCurrency, formatDate, formatNumber, formatPreciseCurrency } from '$lib/format';
+	import { buildHoursOutlook, contractRecognizedHours } from '$lib/stats';
+	import type { Contract } from '$lib/types';
 	import { remainingContractWork } from '$lib/contractFollowUp';
 
 	let { state }: { state: IntermittensState } = $props();
+
+	// Recap of every contract since the start of the current ARE period.
+	let outlook = $derived(buildHoursOutlook(state.appData));
+	let recapRows = $derived(
+		state.appData.contracts
+			.filter(
+				(c) =>
+					c.startDate &&
+					(!outlook.periodStart || c.startDate >= outlook.periodStart) &&
+					(!outlook.anniversary || c.startDate <= outlook.anniversary)
+			)
+			.sort((a, b) => a.startDate.localeCompare(b.startDate))
+	);
+	const today = new Date().toISOString().slice(0, 10);
+	let recapDone = $derived(recapRows.filter((c) => c.startDate <= today));
+	let recapTotals = $derived({
+		cachets: recapDone.reduce((t, c) => t + (c.cachets || 0), 0),
+		hours: recapDone.reduce((t, c) => t + contractRecognizedHours(c), 0),
+		gross: recapDone.reduce((t, c) => t + (c.grossSalary || 0), 0),
+		net: recapDone.reduce((t, c) => t + (c.netSalary || 0), 0)
+	});
+	function recapRole(c: Contract) {
+		const s = c.employmentStatus || '';
+		if (/\bson\b|sonore/i.test(s)) return 'Son';
+		if (/technicien|monteur/i.test(s)) return 'Montage';
+		if (/artiste|réalisat/i.test(s)) return 'Réalisation';
+		return '—';
+	}
+	function recapLabel(c: Contract) {
+		return c.title.replace(/ · [a-zéû]+ \d{4}$/i, '');
+	}
+	function recapDates(c: Contract) {
+		return c.endDate && c.endDate !== c.startDate
+			? `${formatDate(c.startDate)} → ${formatDate(c.endDate)}`
+			: formatDate(c.startDate);
+	}
 	let remainingWork = $derived(remainingContractWork(state.appData));
 	let setAsideWork = $derived(remainingContractWork(state.appData, true));
 	function toggleSetAside(id: string) {
@@ -17,11 +55,64 @@
 	}
 </script>
 
+<section class="panel are-recap">
+	<div class="panel-heading">
+		<h3>Depuis ma dernière ARE</h3>
+	</div>
+	<p class="panel-subtitle">
+		{#if outlook.periodStart}Période du {formatDate(outlook.periodStart)} au {formatDate(outlook.anniversary)} (date anniversaire) ·
+		{/if}<strong>{formatNumber(recapTotals.hours, 0)} h</strong> sur {outlook.target} h
+	</p>
+	<div class="are-recap-scroll">
+		<table class="are-recap-table">
+			<thead>
+				<tr>
+					<th>Dates</th>
+					<th>Employeur · projet</th>
+					<th>Fonction</th>
+					<th class="num">Cachets</th>
+					<th class="num">Heures</th>
+					<th class="num">Brut</th>
+					<th class="num">Net</th>
+				</tr>
+			</thead>
+			<tbody>
+				{#each recapRows as c}
+					<tr class:future={c.startDate > today}>
+						<td>{recapDates(c)}</td>
+						<td>
+							<button type="button" class="link-button" onclick={() => { state.selectedContractId = c.id; state.activeTab = 'contrats'; }}>{recapLabel(c)}</button>
+						</td>
+						<td>{recapRole(c)}</td>
+						<td class="num">{c.cachets || '–'}</td>
+						<td class="num">{formatNumber(contractRecognizedHours(c), 0)}</td>
+						<td class="num">{c.grossSalary ? formatCurrency(c.grossSalary) : '–'}</td>
+						<td class="num">{c.netSalary ? formatCurrency(c.netSalary) : '–'}</td>
+					</tr>
+				{/each}
+			</tbody>
+			<tfoot>
+				<tr>
+					<td colspan="3">Total réalisé</td>
+					<td class="num">{recapTotals.cachets}</td>
+					<td class="num">{formatNumber(recapTotals.hours, 0)} h</td>
+					<td class="num">{formatCurrency(recapTotals.gross)}</td>
+					<td class="num">{formatCurrency(recapTotals.net)}</td>
+				</tr>
+			</tfoot>
+		</table>
+	</div>
+</section>
+
 <section class="view-grid two-columns">
 	<section class="panel">
 		<div class="panel-heading">
-			<h3>Paramètres Annexe 8</h3>
+			<h3>Ma période ARE (paramètres)</h3>
 		</div>
+		<p class="panel-subtitle">
+			L'« Annexe 8 » est le régime des techniciens intermittents (l'Annexe 10 celui des artistes).
+			Ici sont rangées tes notifications France Travail et les dates de ta période d'indemnisation.
+		</p>
 		<div class="search-box">
 			<div class="panel-heading">
 				<h4>Historique intermittence</h4>

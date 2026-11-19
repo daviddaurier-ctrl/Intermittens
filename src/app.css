@@ -2413,3 +2413,14 @@ tr.selected {
 .role-filter button { padding: 4px 12px; border-radius: 999px; font-size: 13px; }
 .role-filter button.active { background: #d62470; color: #fff; }
 .role-son { background: #dcf3e6; color: #1d6b40; }
+
+.are-recap { margin-bottom: 16px; }
+.are-recap-scroll { overflow-x: auto; }
+.are-recap-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.are-recap-table th, .are-recap-table td { padding: 6px 8px; border-bottom: 1px solid rgba(214, 36, 112, 0.1); text-align: left; white-space: nowrap; }
+.are-recap-table td:nth-child(2) { white-space: normal; }
+.are-recap-table th { font-size: 12px; color: #9b4d72; font-weight: 600; }
+.are-recap-table .num { text-align: right; }
+.are-recap-table tr.future { opacity: 0.55; font-style: italic; }
+.are-recap-table tfoot td { font-weight: 700; border-top: 2px solid rgba(214, 36, 112, 0.3); border-bottom: none; }
+.are-recap-table .link-button { background: none; border: none; padding: 0; color: inherit; text-align: left; cursor: pointer; text-decoration: underline dotted; min-height: 0; font: inherit; }
