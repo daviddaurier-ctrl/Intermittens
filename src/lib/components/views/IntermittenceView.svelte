@@ -60,8 +60,8 @@
 		<h3>Depuis ma dernière ARE</h3>
 	</div>
 	<p class="panel-subtitle">
-		{#if outlook.periodStart}Période du {formatDate(outlook.periodStart)} au {formatDate(outlook.anniversary)} (date anniversaire) ·
-		{/if}<strong>{formatNumber(recapTotals.hours, 0)} h</strong> sur {outlook.target} h
+		{#if outlook.periodStart}Période du {formatDate(outlook.periodStart)} au {formatDate(outlook.anniversary)} (date anniversaire) ·&nbsp;
+		{/if} <strong>{formatNumber(recapTotals.hours, 0)} h</strong> sur {outlook.target} h
 	</p>
 	<div class="are-recap-scroll">
 		<table class="are-recap-table">
